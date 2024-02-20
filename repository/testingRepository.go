@@ -10,8 +10,8 @@ type TestingRepository struct {
 	intermediateRelations entity.Relations
 }
 
-func NewTestingRepository(relations entity.Relations, intermediateRelations entity.Relations) TestingRepository {
-	return TestingRepository{
+func NewTestingRepository(relations entity.Relations, intermediateRelations entity.Relations) *TestingRepository {
+	return &TestingRepository{
 		relations:             relations,
 		intermediateRelations: intermediateRelations,
 	}

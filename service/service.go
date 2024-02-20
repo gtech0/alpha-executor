@@ -9,10 +9,10 @@ import (
 )
 
 type ExecutorService struct {
-	testingRepository repository.TestingRepository
+	testingRepository *repository.TestingRepository
 }
 
-func NewExecutorService(testingRepository repository.TestingRepository) *ExecutorService {
+func NewExecutorService(testingRepository *repository.TestingRepository) *ExecutorService {
 	return &ExecutorService{
 		testingRepository: testingRepository,
 	}
@@ -31,6 +31,10 @@ func (e *ExecutorService) Testing(body io.ReadCloser) (model.TestingSender, erro
 
 	e.testingRepository.Clear()
 	e.testingRepository.AddRelations(receiver.Relations)
+
+	for index := 0; index < len(receiver.Query); index++ {
+
+	}
 
 	output, err := e.testingRepository.GetResult()
 	if err != nil {
