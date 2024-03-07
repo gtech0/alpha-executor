@@ -49,94 +49,120 @@ type Position struct {
 type Lexer struct {
 	pos    Position
 	reader *bufio.Reader
+	quant  quant
+	result []Token
+}
+
+type quant struct {
+	token      Token
+	difference int
 }
 
 func NewLexer(reader io.Reader) *Lexer {
 	return &Lexer{
 		pos:    Position{Line: 1, Column: 0},
 		reader: bufio.NewReader(reader),
+		quant:  quant{Token{}, 0},
+		result: make([]Token, 0),
 	}
 }
 
-func (l *Lexer) Lex() (Position, Token) {
-	// keep looping until we return a token
+func (l *Lexer) Lex() []Token {
 	for {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
 			if err == io.EOF {
-				return l.pos, Token{EOF, ""}
+				return l.result
 			}
 
-			// at this point there isn't much we can do, and the compiler
-			// should just return the raw error to the user
 			panic(err)
 		}
 
-		// update the column to the position of the newly read in rune
-		l.pos.Column++
+		if l.quant.token.Value != "" && l.quant.difference > 0 {
+			l.result = append(l.result, l.quant.token)
+			l.quant = quant{Token{}, 0}
+		} else if l.quant.token.Value != "" {
+			l.quant.difference++
+		}
 
+		l.pos.Column++
 		switch r {
 		case '\n':
 			l.resetPosition()
 		case '=':
-			return l.pos, Token{EQUALS, "="}
+			l.result = append(l.result, Token{EQUALS, "="})
+			break
 		case '<':
-			return l.pos, Token{LESS_THAN, "<"}
+			l.result = append(l.result, Token{LESS_THAN, "<"})
+			break
 		case '≤':
-			return l.pos, Token{LESS_THAN_EQUALS, "≤"}
+			l.result = append(l.result, Token{LESS_THAN_EQUALS, "≤"})
+			break
 		case '>':
-			return l.pos, Token{GREATER_THAN, ">"}
+			l.result = append(l.result, Token{GREATER_THAN, ">"})
+			break
 		case '≥':
-			return l.pos, Token{GREATER_THAN_EQUALS, "≥"}
+			l.result = append(l.result, Token{GREATER_THAN_EQUALS, "≥"})
+			break
 		case '∃':
-			return l.pos, Token{EXIST, "∃"}
+			l.quant = quant{Token{EXIST, "∃"}, 0}
+			continue
 		case '∀':
-			return l.pos, Token{FOR_ALL, "∀"}
+			l.quant = quant{Token{FOR_ALL, "∀"}, 0}
+			continue
 		case '¬':
-			return l.pos, Token{NOT, "¬"}
+			l.result = append(l.result, Token{NOT, "¬"})
+			break
 		case '∨':
-			return l.pos, Token{OR, "∨"}
+			l.result = append(l.result, Token{OR, "∨"})
+			break
 		case '∧':
-			return l.pos, Token{AND, "∧"}
+			l.result = append(l.result, Token{AND, "∧"})
+			break
 		case '(':
-			return l.pos, Token{LEFT_PARENTHESIS, "("}
+			l.result = append(l.result, Token{LEFT_PARENTHESIS, "("})
+			break
 		case ')':
-			return l.pos, Token{RIGHT_PARENTHESIS, ")"}
+			l.result = append(l.result, Token{RIGHT_PARENTHESIS, ")"})
+			break
 		case ':':
-			return l.pos, Token{LOGIC_START, ":"}
+			l.result = append(l.result, Token{LOGIC_START, ":"})
+			break
 		default:
 			if unicode.IsSpace(r) {
 				continue
 			} else if unicode.IsDigit(r) {
-				// backup and let lexInt rescan the beginning of the int
-				startPos := l.pos
 				l.backup()
 				lit := l.lexInt()
-				return startPos, Token{INT, lit}
+				l.result = append(l.result, Token{INT, lit})
+				break
 			} else if unicode.IsLetter(r) {
-				// backup and let lexStr rescan the beginning of the ident
-				startPos := l.pos
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					return startPos, Token{ATTRIBUTE, lit}
+					l.result = append(l.result, Token{ATTRIBUTE, lit})
+					break
 				}
 
 				operations := []string{"GET", "RANGE", "HOLD", "RELEASE", "UPDATE"}
 				if slices.Contains(operations, lit) {
-					return startPos, Token{OPERATION, lit}
+					l.result = append(l.result, Token{OPERATION, lit})
+					break
 				}
-				return startPos, Token{RELATION, lit}
+				l.result = append(l.result, Token{RELATION, lit})
+				break
 			} else if r == '\'' {
-				startPos := l.pos
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					return startPos, Token{ILLEGAL, lit}
+					l.result = append(l.result, Token{ILLEGAL, lit})
+					break
 				}
-				return startPos, Token{CONST, lit}
+				l.result = append(l.result, Token{CONST, lit})
+				break
 			} else {
-				return l.pos, Token{ILLEGAL, string(r)}
+				l.result = append(l.result, Token{ILLEGAL, string(r)})
+				break
 			}
 		}
 	}
@@ -155,8 +181,6 @@ func (l *Lexer) backup() {
 	l.pos.Column--
 }
 
-// lexInt scans the input until the end of an integer
-// and then returns the literal.
 func (l *Lexer) lexInt() string {
 	var lit string
 	for {
@@ -172,20 +196,18 @@ func (l *Lexer) lexInt() string {
 		if unicode.IsDigit(r) {
 			lit = lit + string(r)
 		} else {
-			// scanned something not in the integer
 			l.backup()
 			return lit
 		}
 	}
 }
 
-// lexStr scans the input until the end of an identifier
-// and then returns the literal.
 func (l *Lexer) lexStr() (string, bool) {
 	lit := ""
 	quoteCount := 0
 	special := []rune{'.', '-', '/'}
 	period := false
+
 	for {
 		if quoteCount == 2 {
 			return lit, period
@@ -194,7 +216,6 @@ func (l *Lexer) lexStr() (string, bool) {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
 			if err == io.EOF {
-				// at the end of the identifier
 				return lit, period
 			}
 		}
@@ -208,9 +229,9 @@ func (l *Lexer) lexStr() (string, bool) {
 		} else if r == '\'' {
 			quoteCount++
 		} else {
-			// scanned something not in the identifier
 			l.backup()
 			return lit, period
 		}
 	}
+
 }
