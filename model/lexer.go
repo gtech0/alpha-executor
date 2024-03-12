@@ -12,7 +12,6 @@ type LexType int
 const (
 	EOF LexType = iota
 	ILLEGAL
-	OPERATION
 	ATTRIBUTE
 	CONST
 	INT
@@ -20,6 +19,7 @@ const (
 	LOGIC_START
 
 	EQUALS
+	NOT_EQUALS
 	LESS_THAN
 	LESS_THAN_EQUALS
 	GREATER_THAN
@@ -37,8 +37,9 @@ const (
 )
 
 type Token struct {
-	Type  LexType
-	Value string
+	Type     LexType
+	Value    string
+	Position Position
 }
 
 type Position struct {
@@ -49,21 +50,16 @@ type Position struct {
 type Lexer struct {
 	pos    Position
 	reader *bufio.Reader
-	quant  quant
 	result []Token
-}
-
-type quant struct {
-	token      Token
-	difference int
+	write  bool
 }
 
 func NewLexer(reader io.Reader) *Lexer {
 	return &Lexer{
 		pos:    Position{Line: 1, Column: 0},
 		reader: bufio.NewReader(reader),
-		quant:  quant{Token{}, 0},
 		result: make([]Token, 0),
+		write:  false,
 	}
 }
 
@@ -78,55 +74,61 @@ func (l *Lexer) Lex() []Token {
 			panic(err)
 		}
 
-		if l.quant.token.Value != "" && l.quant.difference > 0 {
-			l.result = append(l.result, l.quant.token)
-			l.quant = quant{Token{}, 0}
-		} else if l.quant.token.Value != "" {
-			l.quant.difference++
+		l.pos.Column++
+
+		if r == ':' {
+			l.write = true
+			continue
 		}
 
-		l.pos.Column++
+		if !l.write {
+			continue
+		}
+
 		switch r {
 		case '\n':
 			l.resetPosition()
 		case '=':
-			l.result = append(l.result, Token{EQUALS, "="})
+			l.result = append(l.result, Token{EQUALS, "=", l.pos})
+			break
+		case '≠':
+			l.result = append(l.result, Token{NOT_EQUALS, "≠", l.pos})
 			break
 		case '<':
-			l.result = append(l.result, Token{LESS_THAN, "<"})
+			l.result = append(l.result, Token{LESS_THAN, "<", l.pos})
 			break
 		case '≤':
-			l.result = append(l.result, Token{LESS_THAN_EQUALS, "≤"})
+			l.result = append(l.result, Token{LESS_THAN_EQUALS, "≤", l.pos})
 			break
 		case '>':
-			l.result = append(l.result, Token{GREATER_THAN, ">"})
+			l.result = append(l.result, Token{GREATER_THAN, ">", l.pos})
 			break
 		case '≥':
-			l.result = append(l.result, Token{GREATER_THAN_EQUALS, "≥"})
+			l.result = append(l.result, Token{GREATER_THAN_EQUALS, "≥", l.pos})
 			break
 		case '∃':
-			l.quant = quant{Token{EXIST, "∃"}, 0}
-			continue
+			l.result = append(l.result, Token{EXIST, "∃", l.pos})
+			break
 		case '∀':
-			l.quant = quant{Token{FOR_ALL, "∀"}, 0}
-			continue
+			l.result = append(l.result, Token{FOR_ALL, "∀", l.pos})
+			break
 		case '¬':
-			l.result = append(l.result, Token{NOT, "¬"})
+			l.result = append(l.result, Token{NOT, "¬", l.pos})
 			break
 		case '∨':
-			l.result = append(l.result, Token{OR, "∨"})
+			l.result = append(l.result, Token{OR, "∨", l.pos})
 			break
 		case '∧':
-			l.result = append(l.result, Token{AND, "∧"})
+			l.result = append(l.result, Token{AND, "∧", l.pos})
 			break
 		case '(':
-			l.result = append(l.result, Token{LEFT_PARENTHESIS, "("})
+			l.result = append(l.result, Token{LEFT_PARENTHESIS, "(", l.pos})
 			break
 		case ')':
-			l.result = append(l.result, Token{RIGHT_PARENTHESIS, ")"})
+			l.result = append(l.result, Token{RIGHT_PARENTHESIS, ")", l.pos})
 			break
 		case ':':
-			l.result = append(l.result, Token{LOGIC_START, ":"})
+			l.result = append(l.result, Token{LOGIC_START, ":", l.pos})
 			break
 		default:
 			if unicode.IsSpace(r) {
@@ -134,34 +136,29 @@ func (l *Lexer) Lex() []Token {
 			} else if unicode.IsDigit(r) {
 				l.backup()
 				lit := l.lexInt()
-				l.result = append(l.result, Token{INT, lit})
+				l.result = append(l.result, Token{INT, lit, l.pos})
 				break
 			} else if unicode.IsLetter(r) {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					l.result = append(l.result, Token{ATTRIBUTE, lit})
+					l.result = append(l.result, Token{ATTRIBUTE, lit, l.pos})
 					break
 				}
 
-				operations := []string{"GET", "RANGE", "HOLD", "RELEASE", "UPDATE"}
-				if slices.Contains(operations, lit) {
-					l.result = append(l.result, Token{OPERATION, lit})
-					break
-				}
-				l.result = append(l.result, Token{RELATION, lit})
+				l.result = append(l.result, Token{RELATION, lit, l.pos})
 				break
 			} else if r == '\'' {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					l.result = append(l.result, Token{ILLEGAL, lit})
+					l.result = append(l.result, Token{ILLEGAL, lit, l.pos})
 					break
 				}
-				l.result = append(l.result, Token{CONST, lit})
+				l.result = append(l.result, Token{CONST, lit, l.pos})
 				break
 			} else {
-				l.result = append(l.result, Token{ILLEGAL, string(r)})
+				l.result = append(l.result, Token{ILLEGAL, string(r), l.pos})
 				break
 			}
 		}
