@@ -39,7 +39,24 @@ func (p *Parser) expect(lexType model.LexType) model.Token {
 }
 
 func (p *Parser) ParseExpression() Expression {
-	return p.parseDisjunction()
+	return p.parseImplication()
+}
+
+func (p *Parser) parseImplication() Expression {
+	left := p.parseDisjunction()
+
+	for p.peek().Value == "→" {
+		operator := p.next().Value
+		right := p.parseDisjunction()
+		left = BinaryExpression{
+			kind:     "Binary expression",
+			left:     left,
+			right:    right,
+			operator: operator,
+		}
+	}
+
+	return left
 }
 
 func (p *Parser) parseDisjunction() Expression {
@@ -75,22 +92,6 @@ func (p *Parser) parseConjunction() Expression {
 
 	return left
 }
-
-//func (p *Parser) parseQuantifier() Expression {
-//	left := p.parseComparison()
-//
-//	for p.peek().Value == "∃" || p.peek().Value == "∀" || p.peek().Value == "(" {
-//		//operator := p.next().Value
-//		right := p.parseComparison()
-//		left = UnaryExpression{
-//			kind:     "Unary expression",
-//			right:    right,
-//			operator: p.peek().Value,
-//		}
-//	}
-//
-//	return left
-//}
 
 func (p *Parser) parseComparison() Expression {
 	left := p.parsePrimary()

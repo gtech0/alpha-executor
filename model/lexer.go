@@ -31,6 +31,7 @@ const (
 	NOT
 	OR
 	AND
+	IMPLICATION
 
 	LEFT_PARENTHESIS
 	RIGHT_PARENTHESIS
@@ -120,6 +121,9 @@ func (l *Lexer) Lex() []Token {
 			break
 		case '∧':
 			l.result = append(l.result, Token{AND, "∧", l.pos})
+			break
+		case '→':
+			l.result = append(l.result, Token{IMPLICATION, "→", l.pos})
 			break
 		case '(':
 			l.result = append(l.result, Token{LEFT_PARENTHESIS, "(", l.pos})

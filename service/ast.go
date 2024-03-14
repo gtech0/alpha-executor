@@ -7,7 +7,7 @@ import (
 )
 
 type Expression interface {
-	getKind() string
+	implementExpression()
 }
 
 type BinaryExpression struct {
@@ -17,18 +17,14 @@ type BinaryExpression struct {
 	operator string
 }
 
-func (b BinaryExpression) getKind() string {
-	return b.kind
-}
+func (b BinaryExpression) implementExpression() {}
 
 type Identifier struct {
 	kind  string
 	value string
 }
 
-func (b Identifier) getKind() string {
-	return b.kind
-}
+func (b Identifier) implementExpression() {}
 
 type UnaryExpression struct {
 	kind     string
@@ -36,9 +32,7 @@ type UnaryExpression struct {
 	operator string
 }
 
-func (b UnaryExpression) getKind() string {
-	return b.kind
-}
+func (b UnaryExpression) implementExpression() {}
 
 func GenerateAST(reader io.Reader) {
 	lexer := model.NewLexer(reader)
