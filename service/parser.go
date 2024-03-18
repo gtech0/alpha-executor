@@ -23,7 +23,6 @@ func (p *Parser) next() model.Token {
 
 func (p *Parser) peek() model.Token {
 	if len(p.tokens) == 0 {
-		fmt.Print("WARNING: no tokens left\n")
 		return model.Token{}
 	}
 	return p.tokens[0]
@@ -39,17 +38,20 @@ func (p *Parser) expect(lexType model.LexType) model.Token {
 }
 
 func (p *Parser) ParseExpression() Expression {
-	return p.parseImplication()
+	switch p.peek().Type {
+	default:
+		return p.parseImplication()
+	}
 }
 
 func (p *Parser) parseImplication() Expression {
 	left := p.parseDisjunction()
 
-	for p.peek().Value == "→" {
+	for p.peek().Type == model.IMPLICATION {
 		operator := p.next().Value
 		right := p.parseDisjunction()
 		left = BinaryExpression{
-			kind:     "Binary expression",
+			kind:     BINARY,
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -62,11 +64,11 @@ func (p *Parser) parseImplication() Expression {
 func (p *Parser) parseDisjunction() Expression {
 	left := p.parseConjunction()
 
-	for p.peek().Value == "∨" {
+	for p.peek().Type == model.DISJUNCTION {
 		operator := p.next().Value
 		right := p.parseConjunction()
 		left = BinaryExpression{
-			kind:     "Binary expression",
+			kind:     BINARY,
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -79,11 +81,11 @@ func (p *Parser) parseDisjunction() Expression {
 func (p *Parser) parseConjunction() Expression {
 	left := p.parseComparison()
 
-	for p.peek().Value == "∧" {
+	for p.peek().Type == model.CONJUNCTION {
 		operator := p.next().Value
 		right := p.parseComparison()
 		left = BinaryExpression{
-			kind:     "Binary expression",
+			kind:     BINARY,
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -96,12 +98,20 @@ func (p *Parser) parseConjunction() Expression {
 func (p *Parser) parseComparison() Expression {
 	left := p.parsePrimary()
 
-	operators := []string{"=", "≠", "<", "≤", ">", "≥"}
-	for slices.Contains(operators, p.peek().Value) {
+	operators := []model.LexType{
+		model.EQUALS,
+		model.NOT_EQUALS,
+		model.LESS_THAN,
+		model.LESS_THAN_EQUALS,
+		model.GREATER_THAN,
+		model.GREATER_THAN_EQUALS,
+	}
+
+	for slices.Contains(operators, p.peek().Type) {
 		operator := p.next().Value
 		right := p.parsePrimary()
 		left = BinaryExpression{
-			kind:     "Binary expression",
+			kind:     BINARY,
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -114,28 +124,28 @@ func (p *Parser) parseComparison() Expression {
 func (p *Parser) parsePrimary() Expression {
 	switch p.peek().Type {
 	case model.ATTRIBUTE:
-		return Identifier{"Attribute", p.next().Value}
+		return Identifier{ATTRIBUTE, p.next().Value}
 	case model.RELATION:
-		return Identifier{"Relation", p.next().Value}
-	case model.CONST:
-		return Identifier{"Constant", p.next().Value}
-	case model.INT:
-		return Identifier{"Integer", p.next().Value}
-	case model.NOT:
+		return Identifier{RELATION, p.next().Value}
+	case model.CONSTANT:
+		return Identifier{CONSTANT, p.next().Value}
+	case model.INTEGER:
+		return Identifier{INTEGER, p.next().Value}
+	case model.NEGATION:
 		p.next()
-		return UnaryExpression{"Negation", p.parsePrimary(), "¬"}
+		return UnaryExpression{NEGATION, p.parsePrimary(), "¬"}
 	case model.EXIST:
 		p.next()
-		return BinaryExpression{"Quantifier", p.parsePrimary(), p.parseComparison(), "∃"}
+		return BinaryExpression{EXIST, p.parsePrimary(), p.parseComparison(), "∃"}
 	case model.FOR_ALL:
 		p.next()
-		return BinaryExpression{"Quantifier", p.parsePrimary(), p.parseComparison(), "∀"}
+		return BinaryExpression{FOR_ALL, p.parsePrimary(), p.parseComparison(), "∀"}
 	case model.LEFT_PARENTHESIS:
 		p.next()
 		value := p.ParseExpression()
 		p.expect(model.RIGHT_PARENTHESIS)
 		return value
 	default:
-		panic(fmt.Sprint("unhandled default case ", p.peek().Type))
+		panic(fmt.Sprint("Unhandled default case ", p.peek().Type))
 	}
 }

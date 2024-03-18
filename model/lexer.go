@@ -13,10 +13,11 @@ const (
 	EOF LexType = iota
 	ILLEGAL
 	ATTRIBUTE
-	CONST
-	INT
+	CONSTANT
+	INTEGER
 	RELATION
 	LOGIC_START
+	OPERATION
 
 	EQUALS
 	NOT_EQUALS
@@ -28,9 +29,9 @@ const (
 	EXIST
 	FOR_ALL
 
-	NOT
-	OR
-	AND
+	NEGATION
+	CONJUNCTION
+	DISJUNCTION
 	IMPLICATION
 
 	LEFT_PARENTHESIS
@@ -55,27 +56,31 @@ type Lexer struct {
 	write  bool
 }
 
-func NewLexer(reader io.Reader) *Lexer {
+func NewLexer(reader *bufio.Reader) *Lexer {
 	return &Lexer{
 		pos:    Position{Line: 1, Column: 0},
-		reader: bufio.NewReader(reader),
+		reader: reader,
 		result: make([]Token, 0),
 		write:  false,
 	}
 }
 
-func (l *Lexer) Lex() []Token {
+func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 	for {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
 			if err == io.EOF {
-				return l.result
+				return l.result, &bufio.Reader{}
 			}
 
 			panic(err)
 		}
 
 		l.pos.Column++
+
+		if r == ';' {
+			return l.result, l.reader
+		}
 
 		if r == ':' {
 			l.write = true
@@ -114,13 +119,13 @@ func (l *Lexer) Lex() []Token {
 			l.result = append(l.result, Token{FOR_ALL, "∀", l.pos})
 			break
 		case '¬':
-			l.result = append(l.result, Token{NOT, "¬", l.pos})
+			l.result = append(l.result, Token{NEGATION, "¬", l.pos})
 			break
 		case '∨':
-			l.result = append(l.result, Token{OR, "∨", l.pos})
+			l.result = append(l.result, Token{CONJUNCTION, "∨", l.pos})
 			break
 		case '∧':
-			l.result = append(l.result, Token{AND, "∧", l.pos})
+			l.result = append(l.result, Token{DISJUNCTION, "∧", l.pos})
 			break
 		case '→':
 			l.result = append(l.result, Token{IMPLICATION, "→", l.pos})
@@ -140,13 +145,19 @@ func (l *Lexer) Lex() []Token {
 			} else if unicode.IsDigit(r) {
 				l.backup()
 				lit := l.lexInt()
-				l.result = append(l.result, Token{INT, lit, l.pos})
+				l.result = append(l.result, Token{INTEGER, lit, l.pos})
 				break
 			} else if unicode.IsLetter(r) {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
 					l.result = append(l.result, Token{ATTRIBUTE, lit, l.pos})
+					break
+				}
+
+				operations := []string{"GET", "RANGE", "HOLD", "RELEASE", "UPDATE"}
+				if slices.Contains(operations, lit) {
+					l.result = append(l.result, Token{OPERATION, lit, l.pos})
 					break
 				}
 
@@ -159,7 +170,8 @@ func (l *Lexer) Lex() []Token {
 					l.result = append(l.result, Token{ILLEGAL, lit, l.pos})
 					break
 				}
-				l.result = append(l.result, Token{CONST, lit, l.pos})
+
+				l.result = append(l.result, Token{CONSTANT, lit, l.pos})
 				break
 			} else {
 				l.result = append(l.result, Token{ILLEGAL, string(r), l.pos})

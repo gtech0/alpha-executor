@@ -2,6 +2,7 @@ package main
 
 import (
 	"alpha-executor/service"
+	"bufio"
 	"log"
 	"os"
 )
@@ -19,15 +20,16 @@ import (
 //}
 
 func main() {
-	file, err := os.Open("input.test")
+	file, err := os.Open("input.txt")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+
 	defer func() {
 		if err = file.Close(); err != nil {
 			log.Fatal(err)
 		}
 	}()
 
-	service.GenerateAST(file)
+	service.GenerateAST(bufio.NewReader(file))
 }
