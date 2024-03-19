@@ -38,7 +38,7 @@ func (r *RequestRouter) Start() {
 	port := ":8080"
 	err := http.ListenAndServe(port, router)
 	if err != nil {
-		log.Fatal(fmt.Sprint("can't listen on ", port))
+		log.Fatal(fmt.Sprintf("can't listen on %s port", port))
 		return
 	}
 }

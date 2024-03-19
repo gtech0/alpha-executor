@@ -32,7 +32,7 @@ func MatchQuery(query []string) error {
 		if matches == false {
 			return &entity.CustomError{
 				ErrorType: entity.ResponseTypes["CE"],
-				Message:   fmt.Sprint("No matching in line ", line),
+				Message:   fmt.Sprintf("No matching in line %d", line),
 			}
 		}
 	}

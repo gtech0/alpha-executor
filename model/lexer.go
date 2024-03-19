@@ -9,15 +9,30 @@ import (
 
 type LexType int
 
+func (t LexType) String() string {
+	return tokens[t]
+}
+
 const (
 	EOF LexType = iota
+
+	PROGRAM
+	BINARY
+
 	ILLEGAL
 	ATTRIBUTE
 	CONSTANT
 	INTEGER
 	RELATION
 	LOGIC_START
-	OPERATION
+
+	GET
+	RANGE
+	HOLD
+	RELEASE
+	UPDATE
+	DELETE
+	PUT
 
 	EQUALS
 	NOT_EQUALS
@@ -36,7 +51,49 @@ const (
 
 	LEFT_PARENTHESIS
 	RIGHT_PARENTHESIS
+	COMMA
 )
+
+var tokens = []string{
+	EOF: "EOF",
+
+	PROGRAM: "PROGRAM",
+	BINARY:  "BINARY",
+
+	ILLEGAL:     "ILLEGAL",
+	ATTRIBUTE:   "ATTRIBUTE",
+	CONSTANT:    "CONSTANT",
+	INTEGER:     "INTEGER",
+	RELATION:    "RELATION",
+	LOGIC_START: "LOGIC_START",
+
+	GET:     "GET",
+	RANGE:   "RANGE",
+	HOLD:    "HOLD",
+	RELEASE: "RELEASE",
+	UPDATE:  "UPDATE",
+	DELETE:  "DELETE",
+	PUT:     "PUT",
+
+	EQUALS:              "EQUALS",
+	NOT_EQUALS:          "NOT_EQUALS",
+	LESS_THAN:           "LESS_THAN",
+	LESS_THAN_EQUALS:    "LESS_THAN_EQUALS",
+	GREATER_THAN:        "GREATER_THAN",
+	GREATER_THAN_EQUALS: "GREATER_THAN_EQUALS",
+
+	EXIST:   "EXIST",
+	FOR_ALL: "FOR_ALL",
+
+	NEGATION:    "NEGATION",
+	CONJUNCTION: "CONJUNCTION",
+	DISJUNCTION: "DISJUNCTION",
+	IMPLICATION: "IMPLICATION",
+
+	LEFT_PARENTHESIS:  "LEFT_PARENTHESIS",
+	RIGHT_PARENTHESIS: "RIGHT_PARENTHESIS",
+	COMMA:             "COMMA",
+}
 
 type Token struct {
 	Type     LexType
@@ -80,15 +137,6 @@ func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 
 		if r == ';' {
 			return l.result, l.reader
-		}
-
-		if r == ':' {
-			l.write = true
-			continue
-		}
-
-		if !l.write {
-			continue
 		}
 
 		switch r {
@@ -136,6 +184,9 @@ func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 		case ')':
 			l.result = append(l.result, Token{RIGHT_PARENTHESIS, ")", l.pos})
 			break
+		case ',':
+			l.result = append(l.result, Token{COMMA, ",", l.pos})
+			break
 		case ':':
 			l.result = append(l.result, Token{LOGIC_START, ":", l.pos})
 			break
@@ -155,14 +206,32 @@ func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 					break
 				}
 
-				operations := []string{"GET", "RANGE", "HOLD", "RELEASE", "UPDATE"}
-				if slices.Contains(operations, lit) {
-					l.result = append(l.result, Token{OPERATION, lit, l.pos})
+				switch lit {
+				case "GET":
+					l.result = append(l.result, Token{GET, lit, l.pos})
+					break
+				case "RANGE":
+					l.result = append(l.result, Token{RANGE, lit, l.pos})
+					break
+				case "HOLD":
+					l.result = append(l.result, Token{HOLD, lit, l.pos})
+					break
+				case "RELEASE":
+					l.result = append(l.result, Token{RELEASE, lit, l.pos})
+					break
+				case "UPDATE":
+					l.result = append(l.result, Token{UPDATE, lit, l.pos})
+					break
+				case "DELETE":
+					l.result = append(l.result, Token{DELETE, lit, l.pos})
+					break
+				case "PUT":
+					l.result = append(l.result, Token{PUT, lit, l.pos})
+					break
+				default:
+					l.result = append(l.result, Token{RELATION, lit, l.pos})
 					break
 				}
-
-				l.result = append(l.result, Token{RELATION, lit, l.pos})
-				break
 			} else if r == '\'' {
 				l.backup()
 				lit, period := l.lexStr()
@@ -218,7 +287,7 @@ func (l *Lexer) lexInt() string {
 func (l *Lexer) lexStr() (string, bool) {
 	lit := ""
 	quoteCount := 0
-	special := []rune{'.', '-', '/'}
+	special := []rune{'.', '-', '/', '\\'}
 	period := false
 
 	for {

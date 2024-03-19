@@ -8,5 +8,5 @@ type CustomError struct {
 }
 
 func (c *CustomError) Error() string {
-	return fmt.Sprint(c.ErrorType, ": ", c.Message)
+	return fmt.Sprintf("%s: %s", c.ErrorType, c.Message)
 }

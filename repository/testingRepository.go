@@ -38,7 +38,7 @@ func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
 	}
 	return result, &entity.CustomError{
 		ErrorType: entity.ResponseTypes["CE"],
-		Message:   fmt.Sprint("relation ", name, " is null"),
+		Message:   fmt.Sprintf("relation %s is null", name),
 	}
 }
 

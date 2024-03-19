@@ -3,76 +3,114 @@ package service
 import (
 	"alpha-executor/model"
 	"bufio"
-	"fmt"
-	"github.com/kr/pretty"
 )
-
-type Kind int
 
 type Expression interface {
-	GetKind() Kind
+	GetKind() string
 }
-
-const (
-	PROGRAM Kind = iota
-	BINARY
-	ATTRIBUTE
-	RELATION
-	CONSTANT
-	INTEGER
-	FOR_ALL
-	EXIST
-	NEGATION
-)
 
 type Program struct {
-	kind Kind
-	body Expression
+	kind string
+	body []Expression
 }
 
-func (p Program) GetKind() Kind {
+func (p Program) GetKind() string {
 	return p.kind
 }
 
 type BinaryExpression struct {
-	kind     Kind
+	kind     string
 	left     Expression
 	right    Expression
 	operator string
 }
 
-func (b BinaryExpression) GetKind() Kind {
+func (b BinaryExpression) GetKind() string {
 	return b.kind
 }
 
 type UnaryExpression struct {
-	kind     Kind
+	kind     string
 	right    Expression
 	operator string
 }
 
-func (u UnaryExpression) GetKind() Kind {
+func (u UnaryExpression) GetKind() string {
 	return u.kind
 }
 
 type Identifier struct {
-	kind  Kind
+	kind  string
 	value string
 }
 
-func (i Identifier) GetKind() Kind {
+func (i Identifier) GetKind() string {
 	return i.kind
 }
 
-func GenerateAST(reader *bufio.Reader) {
+type Get struct {
+	kind       string
+	variable   Expression
+	rows       Expression
+	relations  []Expression
+	expression Expression
+}
+
+func (g Get) GetKind() string {
+	return g.kind
+}
+
+type Range struct {
+	kind     string
+	relation Expression
+	variable Expression
+}
+
+func (r Range) GetKind() string {
+	return r.kind
+}
+
+type Hold struct {
+	kind       string
+	variable   Expression
+	relations  []Expression
+	expression Expression
+}
+
+func (h Hold) GetKind() string {
+	return h.kind
+}
+
+type SimpleOperation struct {
+	kind     string
+	variable Expression
+}
+
+func (s SimpleOperation) GetKind() string {
+	return s.kind
+}
+
+type Put struct {
+	kind      string
+	variable  Expression
+	relations []Expression
+}
+
+func (p Put) GetKind() string {
+	return p.kind
+}
+
+func GenerateAST(reader *bufio.Reader) Program {
+	program := Program{model.PROGRAM.String(), make([]Expression, 0)}
 	for {
 		lexer := model.NewLexer(reader)
 		output, currReader := lexer.Lex()
 		if len(output) > 0 {
+			//for _, token := range output {
+			//	fmt.Printf("%d:%d\t%s\t%s\n", token.Position.Line, token.Position.Column, token.Type.String(), token.Value)
+			//}
 			parser := NewParser(output)
-			program := Program{PROGRAM, parser.ParseExpression()}
-			pretty.Print(program)
-			fmt.Print("\n")
+			program.body = append(program.body, parser.ParseExpression())
 		}
 
 		if currReader.Size() == 0 {
@@ -80,7 +118,6 @@ func GenerateAST(reader *bufio.Reader) {
 		}
 	}
 
-	//for _, token := range output {
-	//	fmt.Printf("%d:%d\t%d\t%s\n", token.Position.Line, token.Position.Column, token.Type, token.Value)
-	//}
+	return program
+
 }

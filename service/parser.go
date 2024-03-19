@@ -31,7 +31,7 @@ func (p *Parser) peek() model.Token {
 func (p *Parser) expect(lexType model.LexType) model.Token {
 	prev := p.next()
 	if prev.Type == model.EOF || prev.Type != lexType {
-		log.Fatal(fmt.Sprint("Unexpected token type ", lexType))
+		log.Fatal(fmt.Sprintf("Unexpected token type %s", lexType.String()))
 	}
 
 	return prev
@@ -39,6 +39,8 @@ func (p *Parser) expect(lexType model.LexType) model.Token {
 
 func (p *Parser) ParseExpression() Expression {
 	switch p.peek().Type {
+	case model.GET, model.RANGE, model.HOLD, model.RELEASE, model.UPDATE, model.DELETE, model.PUT:
+		return p.parsePrimary()
 	default:
 		return p.parseImplication()
 	}
@@ -51,7 +53,7 @@ func (p *Parser) parseImplication() Expression {
 		operator := p.next().Value
 		right := p.parseDisjunction()
 		left = BinaryExpression{
-			kind:     BINARY,
+			kind:     model.BINARY.String(),
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -68,7 +70,7 @@ func (p *Parser) parseDisjunction() Expression {
 		operator := p.next().Value
 		right := p.parseConjunction()
 		left = BinaryExpression{
-			kind:     BINARY,
+			kind:     model.BINARY.String(),
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -85,7 +87,7 @@ func (p *Parser) parseConjunction() Expression {
 		operator := p.next().Value
 		right := p.parseComparison()
 		left = BinaryExpression{
-			kind:     BINARY,
+			kind:     model.BINARY.String(),
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -111,7 +113,7 @@ func (p *Parser) parseComparison() Expression {
 		operator := p.next().Value
 		right := p.parsePrimary()
 		left = BinaryExpression{
-			kind:     BINARY,
+			kind:     model.BINARY.String(),
 			left:     left,
 			right:    right,
 			operator: operator,
@@ -122,30 +124,85 @@ func (p *Parser) parseComparison() Expression {
 }
 
 func (p *Parser) parsePrimary() Expression {
-	switch p.peek().Type {
+	parsedType := p.peek().Type
+	switch parsedType {
 	case model.ATTRIBUTE:
-		return Identifier{ATTRIBUTE, p.next().Value}
+		return Identifier{model.ATTRIBUTE.String(), p.next().Value}
 	case model.RELATION:
-		return Identifier{RELATION, p.next().Value}
+		return Identifier{model.RELATION.String(), p.next().Value}
 	case model.CONSTANT:
-		return Identifier{CONSTANT, p.next().Value}
+		return Identifier{model.CONSTANT.String(), p.next().Value}
 	case model.INTEGER:
-		return Identifier{INTEGER, p.next().Value}
+		return Identifier{model.INTEGER.String(), p.next().Value}
 	case model.NEGATION:
 		p.next()
-		return UnaryExpression{NEGATION, p.parsePrimary(), "¬"}
+		return UnaryExpression{model.NEGATION.String(), p.parsePrimary(), "¬"}
 	case model.EXIST:
 		p.next()
-		return BinaryExpression{EXIST, p.parsePrimary(), p.parseComparison(), "∃"}
+		return BinaryExpression{model.EXIST.String(), p.parsePrimary(), p.parseComparison(), "∃"}
 	case model.FOR_ALL:
 		p.next()
-		return BinaryExpression{FOR_ALL, p.parsePrimary(), p.parseComparison(), "∀"}
+		return BinaryExpression{model.FOR_ALL.String(), p.parsePrimary(), p.parseComparison(), "∀"}
 	case model.LEFT_PARENTHESIS:
 		p.next()
 		value := p.ParseExpression()
 		p.expect(model.RIGHT_PARENTHESIS)
 		return value
+	case model.GET:
+		p.next()
+		variable := p.parsePrimary()
+		rows, relations := p.parseRowNumAndRelation()
+		return Get{model.GET.String(), variable, rows, relations, p.ParseExpression()}
+	case model.COMMA:
+		p.next()
+		return p.parsePrimary()
+	case model.RANGE:
+		p.next()
+		return Range{model.RANGE.String(), p.parsePrimary(), p.parsePrimary()}
+	case model.HOLD:
+		p.next()
+		variable := p.parsePrimary()
+		_, relations := p.parseRowNumAndRelation()
+		return Hold{model.HOLD.String(), variable, relations, p.ParseExpression()}
+	case model.RELEASE, model.UPDATE, model.DELETE:
+		kind := parsedType.String()
+		p.next()
+		return SimpleOperation{kind, p.parsePrimary()}
+	case model.PUT:
+		p.next()
+		variable := p.parsePrimary()
+		_, relations := p.parseRowNumAndRelation()
+		return Put{model.PUT.String(), variable, relations}
+	case model.LOGIC_START:
+		p.next()
+		return p.ParseExpression()
 	default:
-		panic(fmt.Sprint("Unhandled default case ", p.peek().Type))
+		panic(fmt.Sprintf("Unhandled default case %s", parsedType.String()))
 	}
+}
+
+func (p *Parser) parseRowNumAndRelation() (Expression, []Expression) {
+	if p.peek().Type != model.LEFT_PARENTHESIS {
+		panic(fmt.Sprintf("Unexpected type %s", p.peek().Type))
+	}
+
+	row := p.parseRelations()
+	if len(row) > 0 && row[0].GetKind() != model.INTEGER.String() {
+		return Identifier{model.INTEGER.String(), "0"}, row
+	} else if len(row) == 0 {
+		log.Fatal(fmt.Sprintf("No parameters detected on %d:%d", p.peek().Position.Line, p.peek().Position.Column))
+	}
+
+	relations := p.parseRelations()
+	return row[0], relations
+}
+
+func (p *Parser) parseRelations() []Expression {
+	p.next()
+	relations := []Expression{p.parsePrimary()}
+	for p.peek().Type == model.COMMA {
+		relations = append(relations, p.parsePrimary())
+	}
+	p.expect(model.RIGHT_PARENTHESIS)
+	return relations
 }

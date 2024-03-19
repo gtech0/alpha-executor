@@ -3,6 +3,7 @@ package main
 import (
 	"alpha-executor/service"
 	"bufio"
+	"github.com/kr/pretty"
 	"log"
 	"os"
 )
@@ -31,5 +32,6 @@ func main() {
 		}
 	}()
 
-	service.GenerateAST(bufio.NewReader(file))
+	program := service.GenerateAST(bufio.NewReader(file))
+	pretty.Print(program)
 }
