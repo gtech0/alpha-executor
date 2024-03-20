@@ -19,10 +19,9 @@ func (p Program) GetKind() string {
 }
 
 type BinaryExpression struct {
-	kind     string
-	left     Expression
-	right    Expression
-	operator string
+	kind  string
+	left  Expression
+	right Expression
 }
 
 func (b BinaryExpression) GetKind() string {
@@ -30,25 +29,24 @@ func (b BinaryExpression) GetKind() string {
 }
 
 type UnaryExpression struct {
-	kind     string
-	right    Expression
-	operator string
+	kind  string
+	right Expression
 }
 
 func (u UnaryExpression) GetKind() string {
 	return u.kind
 }
 
-type Identifier struct {
+type IdentifierExpression struct {
 	kind  string
 	value string
 }
 
-func (i Identifier) GetKind() string {
+func (i IdentifierExpression) GetKind() string {
 	return i.kind
 }
 
-type Get struct {
+type GetExpression struct {
 	kind       string
 	variable   Expression
 	rows       Expression
@@ -56,47 +54,47 @@ type Get struct {
 	expression Expression
 }
 
-func (g Get) GetKind() string {
+func (g GetExpression) GetKind() string {
 	return g.kind
 }
 
-type Range struct {
+type RangeExpression struct {
 	kind     string
 	relation Expression
 	variable Expression
 }
 
-func (r Range) GetKind() string {
+func (r RangeExpression) GetKind() string {
 	return r.kind
 }
 
-type Hold struct {
+type HoldExpression struct {
 	kind       string
 	variable   Expression
 	relations  []Expression
 	expression Expression
 }
 
-func (h Hold) GetKind() string {
+func (h HoldExpression) GetKind() string {
 	return h.kind
 }
 
-type SimpleOperation struct {
+type OperationExpression struct {
 	kind     string
 	variable Expression
 }
 
-func (s SimpleOperation) GetKind() string {
+func (s OperationExpression) GetKind() string {
 	return s.kind
 }
 
-type Put struct {
+type PutExpression struct {
 	kind      string
 	variable  Expression
 	relations []Expression
 }
 
-func (p Put) GetKind() string {
+func (p PutExpression) GetKind() string {
 	return p.kind
 }
 

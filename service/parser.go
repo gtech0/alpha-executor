@@ -53,10 +53,9 @@ func (p *Parser) parseImplication() Expression {
 		operator := p.next().Value
 		right := p.parseDisjunction()
 		left = BinaryExpression{
-			kind:     model.BINARY.String(),
-			left:     left,
-			right:    right,
-			operator: operator,
+			kind:  operator,
+			left:  left,
+			right: right,
 		}
 	}
 
@@ -70,10 +69,9 @@ func (p *Parser) parseDisjunction() Expression {
 		operator := p.next().Value
 		right := p.parseConjunction()
 		left = BinaryExpression{
-			kind:     model.BINARY.String(),
-			left:     left,
-			right:    right,
-			operator: operator,
+			kind:  operator,
+			left:  left,
+			right: right,
 		}
 	}
 
@@ -87,10 +85,9 @@ func (p *Parser) parseConjunction() Expression {
 		operator := p.next().Value
 		right := p.parseComparison()
 		left = BinaryExpression{
-			kind:     model.BINARY.String(),
-			left:     left,
-			right:    right,
-			operator: operator,
+			kind:  operator,
+			left:  left,
+			right: right,
 		}
 	}
 
@@ -113,10 +110,9 @@ func (p *Parser) parseComparison() Expression {
 		operator := p.next().Value
 		right := p.parsePrimary()
 		left = BinaryExpression{
-			kind:     model.BINARY.String(),
-			left:     left,
-			right:    right,
-			operator: operator,
+			kind:  operator,
+			left:  left,
+			right: right,
 		}
 	}
 
@@ -127,22 +123,22 @@ func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
 	switch parsedType {
 	case model.ATTRIBUTE:
-		return Identifier{model.ATTRIBUTE.String(), p.next().Value}
+		return IdentifierExpression{model.ATTRIBUTE.String(), p.next().Value}
 	case model.RELATION:
-		return Identifier{model.RELATION.String(), p.next().Value}
+		return IdentifierExpression{model.RELATION.String(), p.next().Value}
 	case model.CONSTANT:
-		return Identifier{model.CONSTANT.String(), p.next().Value}
+		return IdentifierExpression{model.CONSTANT.String(), p.next().Value}
 	case model.INTEGER:
-		return Identifier{model.INTEGER.String(), p.next().Value}
+		return IdentifierExpression{model.INTEGER.String(), p.next().Value}
 	case model.NEGATION:
 		p.next()
-		return UnaryExpression{model.NEGATION.String(), p.parsePrimary(), "¬"}
+		return UnaryExpression{model.NEGATION.String(), p.parsePrimary()}
 	case model.EXIST:
 		p.next()
-		return BinaryExpression{model.EXIST.String(), p.parsePrimary(), p.parseComparison(), "∃"}
+		return BinaryExpression{model.EXIST.String(), p.parsePrimary(), p.parseComparison()}
 	case model.FOR_ALL:
 		p.next()
-		return BinaryExpression{model.FOR_ALL.String(), p.parsePrimary(), p.parseComparison(), "∀"}
+		return BinaryExpression{model.FOR_ALL.String(), p.parsePrimary(), p.parseComparison()}
 	case model.LEFT_PARENTHESIS:
 		p.next()
 		value := p.ParseExpression()
@@ -152,27 +148,27 @@ func (p *Parser) parsePrimary() Expression {
 		p.next()
 		variable := p.parsePrimary()
 		rows, relations := p.parseRowNumAndRelation()
-		return Get{model.GET.String(), variable, rows, relations, p.ParseExpression()}
+		return GetExpression{model.GET.String(), variable, rows, relations, p.ParseExpression()}
 	case model.COMMA:
 		p.next()
 		return p.parsePrimary()
 	case model.RANGE:
 		p.next()
-		return Range{model.RANGE.String(), p.parsePrimary(), p.parsePrimary()}
+		return RangeExpression{model.RANGE.String(), p.parsePrimary(), p.parsePrimary()}
 	case model.HOLD:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return Hold{model.HOLD.String(), variable, relations, p.ParseExpression()}
+		return HoldExpression{model.HOLD.String(), variable, relations, p.ParseExpression()}
 	case model.RELEASE, model.UPDATE, model.DELETE:
 		kind := parsedType.String()
 		p.next()
-		return SimpleOperation{kind, p.parsePrimary()}
+		return OperationExpression{kind, p.parsePrimary()}
 	case model.PUT:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return Put{model.PUT.String(), variable, relations}
+		return PutExpression{model.PUT.String(), variable, relations}
 	case model.LOGIC_START:
 		p.next()
 		return p.ParseExpression()
@@ -188,7 +184,7 @@ func (p *Parser) parseRowNumAndRelation() (Expression, []Expression) {
 
 	row := p.parseRelations()
 	if len(row) > 0 && row[0].GetKind() != model.INTEGER.String() {
-		return Identifier{model.INTEGER.String(), "0"}, row
+		return IdentifierExpression{model.INTEGER.String(), model.NULL.String()}, row
 	} else if len(row) == 0 {
 		log.Fatal(fmt.Sprintf("No parameters detected on %d:%d", p.peek().Position.Line, p.peek().Position.Column))
 	}

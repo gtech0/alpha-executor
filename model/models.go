@@ -4,7 +4,7 @@ import "alpha-executor/entity"
 
 type (
 	TestingReceiver struct {
-		Query     entity.Query     `json:"query"`
+		Query     string           `json:"query"`
 		Relations entity.Relations `json:"relations"`
 	}
 

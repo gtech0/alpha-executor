@@ -17,14 +17,13 @@ const (
 	EOF LexType = iota
 
 	PROGRAM
-	BINARY
 
 	ILLEGAL
 	ATTRIBUTE
 	CONSTANT
 	INTEGER
+	NULL
 	RELATION
-	LOGIC_START
 
 	GET
 	RANGE
@@ -52,20 +51,20 @@ const (
 	LEFT_PARENTHESIS
 	RIGHT_PARENTHESIS
 	COMMA
+	LOGIC_START
 )
 
 var tokens = []string{
 	EOF: "EOF",
 
 	PROGRAM: "PROGRAM",
-	BINARY:  "BINARY",
 
-	ILLEGAL:     "ILLEGAL",
-	ATTRIBUTE:   "ATTRIBUTE",
-	CONSTANT:    "CONSTANT",
-	INTEGER:     "INTEGER",
-	RELATION:    "RELATION",
-	LOGIC_START: "LOGIC_START",
+	ILLEGAL:   "ILLEGAL",
+	ATTRIBUTE: "ATTRIBUTE",
+	CONSTANT:  "CONSTANT",
+	INTEGER:   "INTEGER",
+	NULL:      "NULL",
+	RELATION:  "RELATION",
 
 	GET:     "GET",
 	RANGE:   "RANGE",
@@ -75,24 +74,25 @@ var tokens = []string{
 	DELETE:  "DELETE",
 	PUT:     "PUT",
 
-	EQUALS:              "EQUALS",
-	NOT_EQUALS:          "NOT_EQUALS",
-	LESS_THAN:           "LESS_THAN",
-	LESS_THAN_EQUALS:    "LESS_THAN_EQUALS",
-	GREATER_THAN:        "GREATER_THAN",
-	GREATER_THAN_EQUALS: "GREATER_THAN_EQUALS",
+	EQUALS:              "=",
+	NOT_EQUALS:          "≠",
+	LESS_THAN:           "<",
+	LESS_THAN_EQUALS:    "≤",
+	GREATER_THAN:        ">",
+	GREATER_THAN_EQUALS: "≥",
 
-	EXIST:   "EXIST",
-	FOR_ALL: "FOR_ALL",
+	EXIST:   "∃",
+	FOR_ALL: "∀",
 
-	NEGATION:    "NEGATION",
-	CONJUNCTION: "CONJUNCTION",
-	DISJUNCTION: "DISJUNCTION",
-	IMPLICATION: "IMPLICATION",
+	NEGATION:    "¬",
+	CONJUNCTION: "∨",
+	DISJUNCTION: "∧",
+	IMPLICATION: "→",
 
-	LEFT_PARENTHESIS:  "LEFT_PARENTHESIS",
-	RIGHT_PARENTHESIS: "RIGHT_PARENTHESIS",
-	COMMA:             "COMMA",
+	LEFT_PARENTHESIS:  "(",
+	RIGHT_PARENTHESIS: ")",
+	COMMA:             ",",
+	LOGIC_START:       ":",
 }
 
 type Token struct {
@@ -143,52 +143,52 @@ func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 		case '\n':
 			l.resetPosition()
 		case '=':
-			l.result = append(l.result, Token{EQUALS, "=", l.pos})
+			l.result = append(l.result, Token{EQUALS, EQUALS.String(), l.pos})
 			break
 		case '≠':
-			l.result = append(l.result, Token{NOT_EQUALS, "≠", l.pos})
+			l.result = append(l.result, Token{NOT_EQUALS, NOT_EQUALS.String(), l.pos})
 			break
 		case '<':
-			l.result = append(l.result, Token{LESS_THAN, "<", l.pos})
+			l.result = append(l.result, Token{LESS_THAN, LESS_THAN.String(), l.pos})
 			break
 		case '≤':
-			l.result = append(l.result, Token{LESS_THAN_EQUALS, "≤", l.pos})
+			l.result = append(l.result, Token{LESS_THAN_EQUALS, LESS_THAN_EQUALS.String(), l.pos})
 			break
 		case '>':
-			l.result = append(l.result, Token{GREATER_THAN, ">", l.pos})
+			l.result = append(l.result, Token{GREATER_THAN, GREATER_THAN.String(), l.pos})
 			break
 		case '≥':
-			l.result = append(l.result, Token{GREATER_THAN_EQUALS, "≥", l.pos})
+			l.result = append(l.result, Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
 			break
 		case '∃':
-			l.result = append(l.result, Token{EXIST, "∃", l.pos})
+			l.result = append(l.result, Token{EXIST, EXIST.String(), l.pos})
 			break
 		case '∀':
-			l.result = append(l.result, Token{FOR_ALL, "∀", l.pos})
+			l.result = append(l.result, Token{FOR_ALL, FOR_ALL.String(), l.pos})
 			break
 		case '¬':
-			l.result = append(l.result, Token{NEGATION, "¬", l.pos})
+			l.result = append(l.result, Token{NEGATION, NEGATION.String(), l.pos})
 			break
 		case '∨':
-			l.result = append(l.result, Token{CONJUNCTION, "∨", l.pos})
+			l.result = append(l.result, Token{CONJUNCTION, CONJUNCTION.String(), l.pos})
 			break
 		case '∧':
-			l.result = append(l.result, Token{DISJUNCTION, "∧", l.pos})
+			l.result = append(l.result, Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
 			break
 		case '→':
-			l.result = append(l.result, Token{IMPLICATION, "→", l.pos})
+			l.result = append(l.result, Token{IMPLICATION, IMPLICATION.String(), l.pos})
 			break
 		case '(':
-			l.result = append(l.result, Token{LEFT_PARENTHESIS, "(", l.pos})
+			l.result = append(l.result, Token{LEFT_PARENTHESIS, LEFT_PARENTHESIS.String(), l.pos})
 			break
 		case ')':
-			l.result = append(l.result, Token{RIGHT_PARENTHESIS, ")", l.pos})
+			l.result = append(l.result, Token{RIGHT_PARENTHESIS, RIGHT_PARENTHESIS.String(), l.pos})
 			break
 		case ',':
-			l.result = append(l.result, Token{COMMA, ",", l.pos})
+			l.result = append(l.result, Token{COMMA, COMMA.String(), l.pos})
 			break
 		case ':':
-			l.result = append(l.result, Token{LOGIC_START, ":", l.pos})
+			l.result = append(l.result, Token{LOGIC_START, LOGIC_START.String(), l.pos})
 			break
 		default:
 			if unicode.IsSpace(r) {

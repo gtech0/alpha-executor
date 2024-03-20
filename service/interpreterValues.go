@@ -1,6 +1,8 @@
 package service
 
-//type InterpreterValue struct {
-//	Type  LexType
-//	Value any
-//}
+import "alpha-executor/model"
+
+type InterpreterValue struct {
+	Type  model.LexType
+	Value any
+}

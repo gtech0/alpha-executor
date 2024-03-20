@@ -1,11 +1,14 @@
 package main
 
 import (
+	"alpha-executor/model"
 	"alpha-executor/service"
 	"bufio"
+	"encoding/json"
 	"github.com/kr/pretty"
 	"log"
 	"os"
+	"strings"
 )
 
 //func main() {
@@ -21,7 +24,7 @@ import (
 //}
 
 func main() {
-	file, err := os.Open("input.txt")
+	file, err := os.Open("resources/test.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,6 +35,13 @@ func main() {
 		}
 	}()
 
-	program := service.GenerateAST(bufio.NewReader(file))
+	var receiver model.TestingReceiver
+	err = json.NewDecoder(file).Decode(&receiver)
+	if err != nil {
+		panic(err)
+	}
+
+	reader := strings.NewReader(receiver.Query)
+	program := service.GenerateAST(bufio.NewReader(reader))
 	pretty.Print(program)
 }

@@ -1,0 +1,123 @@
+{
+  "query": "RANGE ПАЦИЕНТ X;\nRANGE ВРАЧ-ПАЦИЕНТ Y;\nRANGE ВРАЧ-ПАЦИЕНТ Z;\nGET W (ВРАЧ.К/В):\n∀X (∃Y (Y.К/В = 999 ∧ Y.Р/Н = X.Р/Н) →\n∃Z (Z.К/В = ВРАЧ.К/В ∧ Z.Р/Н = X.Р/Н));",
+  "relations": {
+    "R1": [
+      {
+        "name": [
+          "john"
+        ],
+        "phone": [
+          "754743"
+        ],
+        "group": [
+          "group3"
+        ],
+        "birthdate": [
+          "2000-02-01"
+        ]
+      },
+      {
+        "name": [
+          "alex"
+        ],
+        "phone": [
+          "133123"
+        ],
+        "group": [
+          "group2"
+        ],
+        "birthdate": [
+          "2000-01-04"
+        ]
+      },
+      {
+        "name": [
+          "andrew"
+        ],
+        "phone": [
+          "134123"
+        ],
+        "group": [
+          "group1"
+        ],
+        "birthdate": [
+          "1999-03-01"
+        ]
+      },
+      {
+        "name": [
+          "jim"
+        ],
+        "phone": [
+          "135121"
+        ],
+        "group": [
+          "group1"
+        ],
+        "birthdate": [
+          "2001-01-02"
+        ]
+      }
+    ],
+    "R2": [
+      {
+        "name": [
+          "john"
+        ],
+        "phone": [
+          "754743"
+        ]
+      },
+      {
+        "name": [
+          "andrew"
+        ],
+        "phone": [
+          "643634"
+        ]
+      },
+      {
+        "name": [
+          "jim"
+        ],
+        "phone": [
+          "325235"
+        ]
+      },
+      {
+        "name": [
+          "max"
+        ],
+        "phone": [
+          "525632"
+        ]
+      }
+    ],
+    "R3": [
+      {
+        "name": [
+          "john"
+        ],
+        "text": [
+          "qwerty"
+        ]
+      },
+      {
+        "name": [
+          "alex"
+        ],
+        "text": [
+          "uiop"
+        ]
+      },
+      {
+        "name": [
+          "max"
+        ],
+        "text": [
+          "tjrtjrtj"
+        ]
+      }
+    ]
+  }
+}
