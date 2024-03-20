@@ -8,12 +8,18 @@ import (
 type TestingRepository struct {
 	relations             entity.Relations
 	intermediateRelations entity.Relations
+	result                entity.Relation
 }
 
-func NewTestingRepository(relations entity.Relations, intermediateRelations entity.Relations) *TestingRepository {
+func NewTestingRepository(
+	relations entity.Relations,
+	intermediateRelations entity.Relations,
+	result entity.Relation,
+) *TestingRepository {
 	return &TestingRepository{
 		relations:             relations,
 		intermediateRelations: intermediateRelations,
+		result:                result,
 	}
 }
 
@@ -31,14 +37,19 @@ func (t *TestingRepository) AddRelations(relations entity.Relations) {
 	}
 }
 
+func (t *TestingRepository) AddResult(rel *entity.Relation) {
+	t.result = *rel
+}
+
 func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
 	result := t.relations[name]
 	if result != nil {
 		return result, nil
 	}
-	return result, &entity.CustomError{
+
+	return nil, &entity.CustomError{
 		ErrorType: entity.ResponseTypes["CE"],
-		Message:   fmt.Sprintf("relation %s is null", name),
+		Message:   fmt.Sprint("relation ", name, " is null"),
 	}
 }
 
@@ -47,12 +58,12 @@ func (t *TestingRepository) GetIntermediateRelations() *entity.Relations {
 }
 
 func (t *TestingRepository) GetResult() (*entity.Relation, error) {
-	result := t.relations[""]
-
+	result := t.result
 	if result != nil {
-		return result, nil
+		return &result, nil
 	}
-	return result, &entity.CustomError{
+
+	return nil, &entity.CustomError{
 		ErrorType: entity.ResponseTypes["CE"],
 		Message:   "result is null",
 	}
@@ -61,4 +72,5 @@ func (t *TestingRepository) GetResult() (*entity.Relation, error) {
 func (t *TestingRepository) Clear() {
 	clear(t.relations)
 	clear(t.intermediateRelations)
+	clear(t.result)
 }
