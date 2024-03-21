@@ -44,4 +44,8 @@ func main() {
 	reader := strings.NewReader(receiver.Query)
 	program := service.GenerateAST(bufio.NewReader(reader))
 	pretty.Print(program)
+
+	//testingRepository := repository.NewTestingRepository(receiver.Relations, make(entity.Relations), make(entity.Relation))
+	//interpreter := service.NewInterpreter(testingRepository)
+	//interpreter.Evaluate(program)
 }

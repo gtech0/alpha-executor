@@ -6,7 +6,7 @@ import (
 )
 
 type TestingRepository struct {
-	relations             entity.Relations
+	Relations             entity.Relations
 	intermediateRelations entity.Relations
 	result                entity.Relation
 }
@@ -17,14 +17,14 @@ func NewTestingRepository(
 	result entity.Relation,
 ) *TestingRepository {
 	return &TestingRepository{
-		relations:             relations,
+		Relations:             relations,
 		intermediateRelations: intermediateRelations,
 		result:                result,
 	}
 }
 
 func (t *TestingRepository) AddRelation(name string, relation *entity.Relation) {
-	t.relations[name] = relation
+	t.Relations[name] = relation
 }
 
 func (t *TestingRepository) AddIntermediateRelation(name string, relation *entity.Relation) {
@@ -33,7 +33,7 @@ func (t *TestingRepository) AddIntermediateRelation(name string, relation *entit
 
 func (t *TestingRepository) AddRelations(relations entity.Relations) {
 	for name, relation := range relations {
-		t.relations[name] = relation
+		t.Relations[name] = relation
 	}
 }
 
@@ -42,7 +42,7 @@ func (t *TestingRepository) AddResult(rel *entity.Relation) {
 }
 
 func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
-	result := t.relations[name]
+	result := t.Relations[name]
 	if result != nil {
 		return result, nil
 	}
@@ -70,7 +70,7 @@ func (t *TestingRepository) GetResult() (*entity.Relation, error) {
 }
 
 func (t *TestingRepository) Clear() {
-	clear(t.relations)
+	clear(t.Relations)
 	clear(t.intermediateRelations)
 	clear(t.result)
 }

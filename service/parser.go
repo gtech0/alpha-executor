@@ -123,13 +123,13 @@ func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
 	switch parsedType {
 	case model.ATTRIBUTE:
-		return IdentifierExpression{model.ATTRIBUTE.String(), p.next().Value}
+		return IdentifierExpression{model.ATTRIBUTE.String(), p.next()}
 	case model.RELATION:
-		return IdentifierExpression{model.RELATION.String(), p.next().Value}
+		return IdentifierExpression{model.RELATION.String(), p.next()}
 	case model.CONSTANT:
-		return IdentifierExpression{model.CONSTANT.String(), p.next().Value}
+		return IdentifierExpression{model.CONSTANT.String(), p.next()}
 	case model.INTEGER:
-		return IdentifierExpression{model.INTEGER.String(), p.next().Value}
+		return IdentifierExpression{model.INTEGER.String(), p.next()}
 	case model.NEGATION:
 		p.next()
 		return UnaryExpression{model.NEGATION.String(), p.parsePrimary()}
@@ -184,7 +184,11 @@ func (p *Parser) parseRowNumAndRelation() (Expression, []Expression) {
 
 	row := p.parseRelations()
 	if len(row) > 0 && row[0].GetKind() != model.INTEGER.String() {
-		return IdentifierExpression{model.INTEGER.String(), model.NULL.String()}, row
+		return IdentifierExpression{model.INTEGER.String(), model.Token{
+			Type:     model.NULL,
+			Value:    model.NULL.String(),
+			Position: p.peek().Position,
+		}}, row
 	} else if len(row) == 0 {
 		log.Fatal(fmt.Sprintf("No parameters detected on %d:%d", p.peek().Position.Line, p.peek().Position.Column))
 	}

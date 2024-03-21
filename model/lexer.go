@@ -2,6 +2,7 @@ package model
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"slices"
 	"unicode"
@@ -107,27 +108,28 @@ type Position struct {
 }
 
 type Lexer struct {
-	pos    Position
-	reader *bufio.Reader
-	result []Token
-	write  bool
+	pos     Position
+	reader  *bufio.Reader
+	results [][]Token
 }
 
 func NewLexer(reader *bufio.Reader) *Lexer {
 	return &Lexer{
-		pos:    Position{Line: 1, Column: 0},
-		reader: reader,
-		result: make([]Token, 0),
-		write:  false,
+		pos:     Position{Line: 1, Column: 0},
+		reader:  reader,
+		results: make([][]Token, 0),
 	}
 }
 
-func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
+func (l *Lexer) Lex() [][]Token {
+	result := make([]Token, 0)
 	for {
 		r, _, err := l.reader.ReadRune()
+		fmt.Print(string(r) + "\n")
 		if err != nil {
 			if err == io.EOF {
-				return l.result, &bufio.Reader{}
+				l.results = append(l.results, result)
+				return l.results
 			}
 
 			panic(err)
@@ -136,59 +138,61 @@ func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 		l.pos.Column++
 
 		if r == ';' {
-			return l.result, l.reader
+			l.results = append(l.results, result)
+			result = make([]Token, 0)
+			continue
 		}
 
 		switch r {
 		case '\n':
-			l.resetPosition()
+			l.nextLine()
 		case '=':
-			l.result = append(l.result, Token{EQUALS, EQUALS.String(), l.pos})
+			result = append(result, Token{EQUALS, EQUALS.String(), l.pos})
 			break
 		case '≠':
-			l.result = append(l.result, Token{NOT_EQUALS, NOT_EQUALS.String(), l.pos})
+			result = append(result, Token{NOT_EQUALS, NOT_EQUALS.String(), l.pos})
 			break
 		case '<':
-			l.result = append(l.result, Token{LESS_THAN, LESS_THAN.String(), l.pos})
+			result = append(result, Token{LESS_THAN, LESS_THAN.String(), l.pos})
 			break
 		case '≤':
-			l.result = append(l.result, Token{LESS_THAN_EQUALS, LESS_THAN_EQUALS.String(), l.pos})
+			result = append(result, Token{LESS_THAN_EQUALS, LESS_THAN_EQUALS.String(), l.pos})
 			break
 		case '>':
-			l.result = append(l.result, Token{GREATER_THAN, GREATER_THAN.String(), l.pos})
+			result = append(result, Token{GREATER_THAN, GREATER_THAN.String(), l.pos})
 			break
 		case '≥':
-			l.result = append(l.result, Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
+			result = append(result, Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
 			break
 		case '∃':
-			l.result = append(l.result, Token{EXIST, EXIST.String(), l.pos})
+			result = append(result, Token{EXIST, EXIST.String(), l.pos})
 			break
 		case '∀':
-			l.result = append(l.result, Token{FOR_ALL, FOR_ALL.String(), l.pos})
+			result = append(result, Token{FOR_ALL, FOR_ALL.String(), l.pos})
 			break
 		case '¬':
-			l.result = append(l.result, Token{NEGATION, NEGATION.String(), l.pos})
+			result = append(result, Token{NEGATION, NEGATION.String(), l.pos})
 			break
 		case '∨':
-			l.result = append(l.result, Token{CONJUNCTION, CONJUNCTION.String(), l.pos})
+			result = append(result, Token{CONJUNCTION, CONJUNCTION.String(), l.pos})
 			break
 		case '∧':
-			l.result = append(l.result, Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
+			result = append(result, Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
 			break
 		case '→':
-			l.result = append(l.result, Token{IMPLICATION, IMPLICATION.String(), l.pos})
+			result = append(result, Token{IMPLICATION, IMPLICATION.String(), l.pos})
 			break
 		case '(':
-			l.result = append(l.result, Token{LEFT_PARENTHESIS, LEFT_PARENTHESIS.String(), l.pos})
+			result = append(result, Token{LEFT_PARENTHESIS, LEFT_PARENTHESIS.String(), l.pos})
 			break
 		case ')':
-			l.result = append(l.result, Token{RIGHT_PARENTHESIS, RIGHT_PARENTHESIS.String(), l.pos})
+			result = append(result, Token{RIGHT_PARENTHESIS, RIGHT_PARENTHESIS.String(), l.pos})
 			break
 		case ',':
-			l.result = append(l.result, Token{COMMA, COMMA.String(), l.pos})
+			result = append(result, Token{COMMA, COMMA.String(), l.pos})
 			break
 		case ':':
-			l.result = append(l.result, Token{LOGIC_START, LOGIC_START.String(), l.pos})
+			result = append(result, Token{LOGIC_START, LOGIC_START.String(), l.pos})
 			break
 		default:
 			if unicode.IsSpace(r) {
@@ -196,61 +200,61 @@ func (l *Lexer) Lex() ([]Token, *bufio.Reader) {
 			} else if unicode.IsDigit(r) {
 				l.backup()
 				lit := l.lexInt()
-				l.result = append(l.result, Token{INTEGER, lit, l.pos})
+				result = append(result, Token{INTEGER, lit, l.pos})
 				break
 			} else if unicode.IsLetter(r) {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					l.result = append(l.result, Token{ATTRIBUTE, lit, l.pos})
+					result = append(result, Token{ATTRIBUTE, lit, l.pos})
 					break
 				}
 
 				switch lit {
 				case "GET":
-					l.result = append(l.result, Token{GET, lit, l.pos})
+					result = append(result, Token{GET, lit, l.pos})
 					break
 				case "RANGE":
-					l.result = append(l.result, Token{RANGE, lit, l.pos})
+					result = append(result, Token{RANGE, lit, l.pos})
 					break
 				case "HOLD":
-					l.result = append(l.result, Token{HOLD, lit, l.pos})
+					result = append(result, Token{HOLD, lit, l.pos})
 					break
 				case "RELEASE":
-					l.result = append(l.result, Token{RELEASE, lit, l.pos})
+					result = append(result, Token{RELEASE, lit, l.pos})
 					break
 				case "UPDATE":
-					l.result = append(l.result, Token{UPDATE, lit, l.pos})
+					result = append(result, Token{UPDATE, lit, l.pos})
 					break
 				case "DELETE":
-					l.result = append(l.result, Token{DELETE, lit, l.pos})
+					result = append(result, Token{DELETE, lit, l.pos})
 					break
 				case "PUT":
-					l.result = append(l.result, Token{PUT, lit, l.pos})
+					result = append(result, Token{PUT, lit, l.pos})
 					break
 				default:
-					l.result = append(l.result, Token{RELATION, lit, l.pos})
+					result = append(result, Token{RELATION, lit, l.pos})
 					break
 				}
 			} else if r == '\'' {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					l.result = append(l.result, Token{ILLEGAL, lit, l.pos})
+					result = append(result, Token{ILLEGAL, lit, l.pos})
 					break
 				}
 
-				l.result = append(l.result, Token{CONSTANT, lit, l.pos})
+				result = append(result, Token{CONSTANT, lit, l.pos})
 				break
 			} else {
-				l.result = append(l.result, Token{ILLEGAL, string(r), l.pos})
+				result = append(result, Token{ILLEGAL, string(r), l.pos})
 				break
 			}
 		}
 	}
 }
 
-func (l *Lexer) resetPosition() {
+func (l *Lexer) nextLine() {
 	l.pos.Line++
 	l.pos.Column = 0
 }

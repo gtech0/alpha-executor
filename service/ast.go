@@ -39,7 +39,7 @@ func (u UnaryExpression) GetKind() string {
 
 type IdentifierExpression struct {
 	kind  string
-	value string
+	token model.Token
 }
 
 func (i IdentifierExpression) GetKind() string {
@@ -100,22 +100,17 @@ func (p PutExpression) GetKind() string {
 
 func GenerateAST(reader *bufio.Reader) Program {
 	program := Program{model.PROGRAM.String(), make([]Expression, 0)}
-	for {
-		lexer := model.NewLexer(reader)
-		output, currReader := lexer.Lex()
-		if len(output) > 0 {
-			//for _, token := range output {
+	lexer := model.NewLexer(reader)
+	output := lexer.Lex()
+	for _, query := range output {
+		if len(query) > 0 {
+			//for _, token := range query {
 			//	fmt.Printf("%d:%d\t%s\t%s\n", token.Position.Line, token.Position.Column, token.Type.String(), token.Value)
 			//}
-			parser := NewParser(output)
+			parser := NewParser(query)
 			program.body = append(program.body, parser.ParseExpression())
-		}
-
-		if currReader.Size() == 0 {
-			break
 		}
 	}
 
 	return program
-
 }
