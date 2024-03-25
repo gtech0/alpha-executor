@@ -38,8 +38,9 @@ func (u UnaryExpression) GetKind() string {
 }
 
 type IdentifierExpression struct {
-	kind  string
-	token model.Token
+	kind     string
+	value    string
+	position model.Position
 }
 
 func (i IdentifierExpression) GetKind() string {

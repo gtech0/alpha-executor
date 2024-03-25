@@ -3,6 +3,7 @@ package service
 import (
 	"alpha-executor/entity"
 	"alpha-executor/model"
+	"alpha-executor/repository"
 	"fmt"
 	"log"
 	"slices"
@@ -11,27 +12,32 @@ import (
 )
 
 type Comparison struct {
+	repository *repository.TestingRepository
+}
+
+func NewComparison(repository *repository.TestingRepository) *Comparison {
+	return &Comparison{repository: repository}
 }
 
 func (c *Comparison) compareOperands(
-	relation *entity.Relation,
+	relation entity.Pair[string, *entity.Relation],
 	params BinaryExpression,
-	result *entity.Relation,
 ) error {
+	result := &entity.Relation{}
 	attr := model.Attribute{}
 
-	attributeLeft, err := attr.ExtractAttribute(params.left.(IdentifierExpression).token.Value)
+	attributeLeft, err := attr.ExtractAttribute(params.left.(IdentifierExpression).value)
 	if err != nil {
 		return err
 	}
 
-	attributeRight, err := attr.ExtractAttribute(params.right.(IdentifierExpression).token.Value)
+	attributeRight, err := attr.ExtractAttribute(params.right.(IdentifierExpression).value)
 	if err != nil {
 		return err
 	}
 
 	attributes := []string{attributeLeft.Attribute, attributeRight.Attribute}
-	for row := range *relation {
+	for row := range *relation.Right {
 		for _, attribute := range attributes {
 			if c.incorrectAttribute(row, attribute) {
 				return &entity.CustomError{
@@ -44,8 +50,8 @@ func (c *Comparison) compareOperands(
 		valuesRight := (*row)[attributeRight.Attribute]
 		c.checkIfAttributeAndCompare(row, valuesLeft, valuesRight, result, params)
 	}
-	//TODO: add to relations
 
+	c.repository.AddRelation(relation.Left, relation.Right)
 	return nil
 }
 
@@ -63,19 +69,19 @@ func (c *Comparison) checkIfAttributeAndCompare(
 	if len(valuesLeft) != 0 && len(valuesRight) != 0 {
 		for _, valLeft := range valuesLeft {
 			for _, valRight := range valuesRight {
-				params.left.(*IdentifierExpression).token.Value = valLeft
-				params.right.(*IdentifierExpression).token.Value = valRight
+				params.left.(*IdentifierExpression).value = valLeft
+				params.right.(*IdentifierExpression).value = valRight
 				c.valueComparator(params, row, result)
 			}
 		}
 	} else if len(valuesLeft) != 0 {
 		for _, valLeft := range valuesLeft {
-			params.left.(*IdentifierExpression).token.Value = valLeft
+			params.left.(*IdentifierExpression).value = valLeft
 			c.valueComparator(params, row, result)
 		}
 	} else if len(valuesRight) != 0 {
 		for _, valRight := range valuesRight {
-			params.right.(*IdentifierExpression).token.Value = valRight
+			params.right.(*IdentifierExpression).value = valRight
 			c.valueComparator(params, row, result)
 		}
 	} else {
@@ -95,12 +101,12 @@ func (c *Comparison) compare(params BinaryExpression) bool {
 }
 
 func (*Comparison) numericComparator(params BinaryExpression) bool {
-	oldValNum, err := strconv.ParseFloat(params.left.(IdentifierExpression).token.Value, 10)
+	oldValNum, err := strconv.ParseFloat(params.left.(IdentifierExpression).value, 10)
 	if err != nil {
 		return false
 	}
 
-	newValNum, err := strconv.ParseFloat(params.right.(IdentifierExpression).token.Value, 10)
+	newValNum, err := strconv.ParseFloat(params.right.(IdentifierExpression).value, 10)
 	if err != nil {
 		return false
 	}
@@ -125,8 +131,8 @@ func (*Comparison) numericComparator(params BinaryExpression) bool {
 }
 
 func (*Comparison) stringComparator(params BinaryExpression) bool {
-	oldVal := params.left.(IdentifierExpression).token.Value
-	newVal := params.right.(IdentifierExpression).token.Value
+	oldVal := params.left.(IdentifierExpression).value
+	newVal := params.right.(IdentifierExpression).value
 	switch params.kind {
 	case "=":
 		return oldVal == newVal

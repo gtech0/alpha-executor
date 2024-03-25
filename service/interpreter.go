@@ -1,6 +1,7 @@
 package service
 
 import (
+	"alpha-executor/entity"
 	"alpha-executor/model"
 	"alpha-executor/repository"
 	"fmt"
@@ -29,10 +30,10 @@ func (i *Interpreter) evaluateProgram(program Program) {
 			break
 		case BinaryExpression:
 			if expression.(BinaryExpression).kind != "=" {
-				position := expression.(BinaryExpression).left.(IdentifierExpression).token.Position
+				position := expression.(BinaryExpression).left.(IdentifierExpression).position
 				log.Fatal(fmt.Sprintf("Incorrect assigment operator at %d:%d", position.Line, position.Column))
 			}
-			i.evaluateBinary(expression.(BinaryExpression))
+			//i.evaluateBinary(expression.(BinaryExpression))
 			break
 		case RangeExpression:
 			i.evaluateRange(expression.(RangeExpression))
@@ -44,54 +45,99 @@ func (i *Interpreter) evaluateProgram(program Program) {
 }
 
 func (i *Interpreter) evaluateGet(expression GetExpression) {
-}
+	relation := expression.variable.(IdentifierExpression)
+	if relation.kind != model.RELATION.String() {
+		log.Fatal(fmt.Sprintf("Expected relation on position %d:%d",
+			relation.position.Line, relation.position.Column))
+	}
 
-func (i *Interpreter) evaluateHold(expression HoldExpression) {
-}
+	relationPair := entity.Pair[string, *entity.Relation]{Left: relation.value, Right: &entity.Relation{}}
+	attributes := make([]model.ComplexAttribute, 0)
+	for _, data := range expression.relations {
+		isRelation := false
+		switch data.GetKind() {
+		case model.RELATION.String():
+			isRelation = true
+			result, err := i.repository.GetRelation(data.(IdentifierExpression).value)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-func (i *Interpreter) evaluateBinary(expression BinaryExpression) {
-	//comparison := Comparison{}
+			relationPair.Right = result
+			break
+		case model.ATTRIBUTE.String():
+			attr := model.Attribute{}
+			attribute, err := attr.ExtractAttribute(data.(IdentifierExpression).value)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	//comparison.compareOperands(expression., expression, make(entity.Relation))
-	//left := expression.left.GetKind()
-	//right := expression.right.GetKind()
-	//if left == model.ATTRIBUTE.String() && right == model.ATTRIBUTE.String() {
+			attributes = append(attributes, attribute)
+			//result, err := i.repository.GetRelation(attribute.Relation)
+			//row := &entity.RowMap{}
+			//for rowMap := range *result {
+			//	values, exists := (*rowMap)[attribute.Attribute]
+			//	if !exists {
+			//		log.Fatal(fmt.Sprintf("Attribute %s of relation %s doesn't exist",
+			//			attribute.Attribute, attribute.Relation))
+			//	}
+			//	(*row)[attribute.Attribute] = values
+			//}
+			//(*relationPair.Right)[row] = struct{}{}
+			//break
+		default:
+			log.Fatal(fmt.Sprintf("Unexpected type on position %d:%d",
+				relation.position.Line, relation.position.Column))
+		}
+
+		if isRelation {
+			break
+		}
+	}
+
+	//join := operation.Join{}
+	//if len(attributes) >= 2 {
+	//	rel1, err := i.repository.GetRelation(attributes[0].Relation)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
 	//
-	//} else if left == model.ATTRIBUTE.String() && right != model.ATTRIBUTE.String() {
+	//	relPair1 := entity.Pair[string, *entity.Relation]{Left: attributes[0].Relation, Right: rel1}
 	//
-	//} else if left != model.ATTRIBUTE.String() && right == model.ATTRIBUTE.String() {
+	//	for len(attributes) > 0 {
+	//		rel2, err := i.repository.GetRelation(attributes[0].Relation)
+	//		if err != nil {
+	//			log.Fatal(err)
+	//		}
 	//
-	//} else {
-	//
+	//		relPair2 := entity.Pair[string, *entity.Relation]{Left: attributes[0].Relation, Right: rel2}
+	//		result, err := join.Execute(relPair1, relPair2)
+	//		if err != nil {
+	//			log.Fatal(err)
+	//		}
+	//	}
 	//}
 }
 
+func (i *Interpreter) evaluateHold(expression HoldExpression) {
+
+}
+
+func (i *Interpreter) evaluateBinary(relation entity.Pair[string, *entity.Relation], expression BinaryExpression) {
+	comparison := NewComparison(i.repository)
+	err := comparison.compareOperands(relation, expression)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func (i *Interpreter) evaluateRange(expression RangeExpression) {
-	relation, err := i.repository.GetRelation(expression.relation.(IdentifierExpression).token.Value)
+	relation, err := i.repository.GetRelation(expression.relation.(IdentifierExpression).value)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	i.repository.AddRelation(expression.variable.(IdentifierExpression).token.Value, relation)
-}
-
-func (i *Interpreter) evaluateBinaryNumeric(expression BinaryExpression) {
-	switch expression.kind {
-	case model.EQUALS.String():
-		break
-	case model.NOT_EQUALS.String():
-		break
-	case model.LESS_THAN.String():
-		break
-	case model.LESS_THAN_EQUALS.String():
-		break
-	case model.GREATER_THAN.String():
-		break
-	case model.GREATER_THAN_EQUALS.String():
-		break
-	default:
-		log.Fatal(fmt.Sprintf("Unknown operator %s", expression.kind))
-	}
+	i.repository.AddRelation(expression.variable.(IdentifierExpression).value, relation)
 }
 
 func (i *Interpreter) Evaluate(expression Expression) {

@@ -2,7 +2,6 @@ package model
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"slices"
 	"unicode"
@@ -125,7 +124,7 @@ func (l *Lexer) Lex() [][]Token {
 	result := make([]Token, 0)
 	for {
 		r, _, err := l.reader.ReadRune()
-		fmt.Print(string(r) + "\n")
+		//fmt.Print(string(r) + "\n")
 		if err != nil {
 			if err == io.EOF {
 				l.results = append(l.results, result)

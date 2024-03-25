@@ -1,5 +1,5 @@
 {
-  "query": "RANGE R1 X;\nRANGE R2 Y;\nRANGE R3 Z;",
+  "query": "RANGE ПАЦИЕНТ X;\nRANGE ВРАЧ-ПАЦИЕНТ Y;\nRANGE ВРАЧ-ПАЦИЕНТ Z;\nGET W (ВРАЧ.К/В):\n∀X (∃Y (Y.К/В = 999 ∧ Y.Р/Н = X.Р/Н));",
   "relations": {
     "R1": [
       {
