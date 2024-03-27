@@ -2,9 +2,11 @@ package service
 
 import (
 	"alpha-executor/model"
+	"alpha-executor/operation"
 	"alpha-executor/repository"
 	"bufio"
 	"encoding/json"
+	"github.com/kr/pretty"
 	"io"
 	"strings"
 )
@@ -29,10 +31,13 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 	e.testingRepository.AddRelations(receiver.Relations)
 
 	reader := strings.NewReader(receiver.Query)
-	program := GenerateAST(bufio.NewReader(reader))
-	//pretty.Print(program)
-	interpreter := NewInterpreter(e.testingRepository)
-	interpreter.Evaluate(program)
+	program := operation.GenerateAST(bufio.NewReader(reader))
+	pretty.Print(program)
+	interpreter := operation.NewInterpreter(e.testingRepository)
+	err := interpreter.Evaluate(&program)
+	if err != nil {
+		return model.TestingSender{}, err
+	}
 
 	output, err := e.testingRepository.GetResult()
 	if err != nil {

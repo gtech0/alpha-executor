@@ -1,4 +1,4 @@
-package service
+package operation
 
 import (
 	"alpha-executor/model"
@@ -14,7 +14,7 @@ type Program struct {
 	body []Expression
 }
 
-func (p Program) GetKind() string {
+func (p *Program) GetKind() string {
 	return p.kind
 }
 
@@ -24,7 +24,7 @@ type BinaryExpression struct {
 	right Expression
 }
 
-func (b BinaryExpression) GetKind() string {
+func (b *BinaryExpression) GetKind() string {
 	return b.kind
 }
 
@@ -33,7 +33,7 @@ type UnaryExpression struct {
 	right Expression
 }
 
-func (u UnaryExpression) GetKind() string {
+func (u *UnaryExpression) GetKind() string {
 	return u.kind
 }
 
@@ -43,7 +43,7 @@ type IdentifierExpression struct {
 	position model.Position
 }
 
-func (i IdentifierExpression) GetKind() string {
+func (i *IdentifierExpression) GetKind() string {
 	return i.kind
 }
 
@@ -55,7 +55,7 @@ type GetExpression struct {
 	expression Expression
 }
 
-func (g GetExpression) GetKind() string {
+func (g *GetExpression) GetKind() string {
 	return g.kind
 }
 
@@ -65,7 +65,7 @@ type RangeExpression struct {
 	variable Expression
 }
 
-func (r RangeExpression) GetKind() string {
+func (r *RangeExpression) GetKind() string {
 	return r.kind
 }
 
@@ -76,7 +76,7 @@ type HoldExpression struct {
 	expression Expression
 }
 
-func (h HoldExpression) GetKind() string {
+func (h *HoldExpression) GetKind() string {
 	return h.kind
 }
 
@@ -85,7 +85,7 @@ type OperationExpression struct {
 	variable Expression
 }
 
-func (s OperationExpression) GetKind() string {
+func (s *OperationExpression) GetKind() string {
 	return s.kind
 }
 
@@ -95,7 +95,7 @@ type PutExpression struct {
 	relations []Expression
 }
 
-func (p PutExpression) GetKind() string {
+func (p *PutExpression) GetKind() string {
 	return p.kind
 }
 
