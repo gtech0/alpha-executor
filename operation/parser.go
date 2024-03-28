@@ -121,6 +121,7 @@ func (p *Parser) parseComparison() Expression {
 
 func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
+	position := p.peek().Position
 	switch parsedType {
 	case model.ATTRIBUTE:
 		token := p.next()
@@ -136,13 +137,13 @@ func (p *Parser) parsePrimary() Expression {
 		return &IdentifierExpression{model.INTEGER.String(), token.Value, token.Position}
 	case model.NEGATION:
 		p.next()
-		return &UnaryExpression{model.NEGATION.String(), p.parsePrimary()}
+		return &UnaryExpression{model.NEGATION.String(), p.parsePrimary(), position}
 	case model.EXIST:
 		p.next()
-		return &BinaryExpression{model.EXIST.String(), p.parsePrimary(), p.parseComparison()}
+		return &BinaryExpression{model.EXIST.String(), p.parsePrimary(), p.parseComparison(), position}
 	case model.FOR_ALL:
 		p.next()
-		return &BinaryExpression{model.FOR_ALL.String(), p.parsePrimary(), p.parseComparison()}
+		return &BinaryExpression{model.FOR_ALL.String(), p.parsePrimary(), p.parseComparison(), position}
 	case model.LEFT_PARENTHESIS:
 		p.next()
 		value := p.ParseExpression()
@@ -152,27 +153,27 @@ func (p *Parser) parsePrimary() Expression {
 		p.next()
 		variable := p.parsePrimary()
 		rows, relations := p.parseRowNumAndRelation()
-		return &GetExpression{model.GET.String(), variable, rows, relations, p.ParseExpression()}
+		return &GetExpression{model.GET.String(), variable, rows, relations, p.ParseExpression(), position}
 	case model.COMMA:
 		p.next()
 		return p.parsePrimary()
 	case model.RANGE:
 		p.next()
-		return &RangeExpression{model.RANGE.String(), p.parsePrimary(), p.parsePrimary()}
+		return &RangeExpression{model.RANGE.String(), p.parsePrimary(), p.parsePrimary(), position}
 	case model.HOLD:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return &HoldExpression{model.HOLD.String(), variable, relations, p.ParseExpression()}
+		return &HoldExpression{model.HOLD.String(), variable, relations, p.ParseExpression(), position}
 	case model.RELEASE, model.UPDATE, model.DELETE:
 		kind := parsedType.String()
 		p.next()
-		return &OperationExpression{kind, p.parsePrimary()}
+		return &OperationExpression{kind, p.parsePrimary(), position}
 	case model.PUT:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return &PutExpression{model.PUT.String(), variable, relations}
+		return &PutExpression{model.PUT.String(), variable, relations, position}
 	case model.LOGIC_START:
 		p.next()
 		return p.ParseExpression()

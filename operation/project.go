@@ -9,13 +9,13 @@ import (
 type Projection struct {
 }
 
-func (*Projection) Execute(relation entity.Pair[string, *entity.Relation], attributes []string) (*entity.Relation, error) {
+func (*Projection) Execute(relation entity.Pair[string, *entity.Relation], attributes []string, position entity.Position) (*entity.Relation, error) {
 	projected := make(entity.Relation)
 	attr := model.Attribute{}
 	for row := range *relation.Right {
 		newRow := make(entity.RowMap)
 		for _, attribute := range attributes {
-			slicedAttribute, err := attr.ExtractAttribute(attribute)
+			slicedAttribute, err := attr.ExtractAttribute(attribute, position)
 			if err != nil {
 				continue
 			}
@@ -25,6 +25,7 @@ func (*Projection) Execute(relation entity.Pair[string, *entity.Relation], attri
 				return nil, &entity.CustomError{
 					ErrorType: entity.ResponseTypes["CE"],
 					Message:   fmt.Sprintf("attribute %s doesn't exist", attribute),
+					Position:  position,
 				}
 			}
 

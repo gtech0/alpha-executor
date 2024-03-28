@@ -1,6 +1,7 @@
 package model
 
 import (
+	"alpha-executor/entity"
 	"bufio"
 	"io"
 	"slices"
@@ -85,8 +86,8 @@ var tokens = []string{
 	FOR_ALL: "∀",
 
 	NEGATION:    "¬",
-	CONJUNCTION: "∨",
-	DISJUNCTION: "∧",
+	CONJUNCTION: "∧",
+	DISJUNCTION: "∨",
 	IMPLICATION: "→",
 
 	LEFT_PARENTHESIS:  "(",
@@ -98,23 +99,18 @@ var tokens = []string{
 type Token struct {
 	Type     LexType
 	Value    string
-	Position Position
-}
-
-type Position struct {
-	Line   int
-	Column int
+	Position entity.Position
 }
 
 type Lexer struct {
-	pos     Position
+	pos     entity.Position
 	reader  *bufio.Reader
 	results [][]Token
 }
 
 func NewLexer(reader *bufio.Reader) *Lexer {
 	return &Lexer{
-		pos:     Position{Line: 1, Column: 0},
+		pos:     entity.Position{Line: 1, Column: 0},
 		reader:  reader,
 		results: make([][]Token, 0),
 	}
@@ -172,10 +168,10 @@ func (l *Lexer) Lex() [][]Token {
 		case '¬':
 			result = append(result, Token{NEGATION, NEGATION.String(), l.pos})
 			break
-		case '∨':
+		case '∧':
 			result = append(result, Token{CONJUNCTION, CONJUNCTION.String(), l.pos})
 			break
-		case '∧':
+		case '∨':
 			result = append(result, Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
 			break
 		case '→':
@@ -235,7 +231,7 @@ func (l *Lexer) Lex() [][]Token {
 					result = append(result, Token{RELATION, lit, l.pos})
 					break
 				}
-			} else if r == '\'' {
+			} else if r == '"' {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
@@ -311,7 +307,7 @@ func (l *Lexer) lexStr() (string, bool) {
 			if r == '.' {
 				period = true
 			}
-		} else if r == '\'' {
+		} else if r == '"' {
 			quoteCount++
 		} else {
 			l.backup()

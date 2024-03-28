@@ -1,6 +1,7 @@
 package operation
 
 import (
+	"alpha-executor/entity"
 	"alpha-executor/model"
 	"bufio"
 )
@@ -19,9 +20,10 @@ func (p *Program) GetKind() string {
 }
 
 type BinaryExpression struct {
-	kind  string
-	left  Expression
-	right Expression
+	kind     string
+	left     Expression
+	right    Expression
+	position entity.Position
 }
 
 func (b *BinaryExpression) GetKind() string {
@@ -29,8 +31,9 @@ func (b *BinaryExpression) GetKind() string {
 }
 
 type UnaryExpression struct {
-	kind  string
-	right Expression
+	kind     string
+	right    Expression
+	position entity.Position
 }
 
 func (u *UnaryExpression) GetKind() string {
@@ -40,7 +43,7 @@ func (u *UnaryExpression) GetKind() string {
 type IdentifierExpression struct {
 	kind     string
 	value    string
-	position model.Position
+	position entity.Position
 }
 
 func (i *IdentifierExpression) GetKind() string {
@@ -53,6 +56,7 @@ type GetExpression struct {
 	rows       Expression
 	relations  []Expression
 	expression Expression
+	position   entity.Position
 }
 
 func (g *GetExpression) GetKind() string {
@@ -63,6 +67,7 @@ type RangeExpression struct {
 	kind     string
 	relation Expression
 	variable Expression
+	position entity.Position
 }
 
 func (r *RangeExpression) GetKind() string {
@@ -74,6 +79,7 @@ type HoldExpression struct {
 	variable   Expression
 	relations  []Expression
 	expression Expression
+	position   entity.Position
 }
 
 func (h *HoldExpression) GetKind() string {
@@ -83,6 +89,7 @@ func (h *HoldExpression) GetKind() string {
 type OperationExpression struct {
 	kind     string
 	variable Expression
+	position entity.Position
 }
 
 func (s *OperationExpression) GetKind() string {
@@ -93,6 +100,7 @@ type PutExpression struct {
 	kind      string
 	variable  Expression
 	relations []Expression
+	position  entity.Position
 }
 
 func (p *PutExpression) GetKind() string {

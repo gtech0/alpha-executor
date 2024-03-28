@@ -6,7 +6,6 @@ import (
 	"alpha-executor/repository"
 	"bufio"
 	"encoding/json"
-	"github.com/kr/pretty"
 	"io"
 	"strings"
 )
@@ -32,7 +31,7 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 
 	reader := strings.NewReader(receiver.Query)
 	program := operation.GenerateAST(bufio.NewReader(reader))
-	pretty.Print(program)
+	//pretty.Print(program)
 	interpreter := operation.NewInterpreter(e.testingRepository)
 	err := interpreter.Evaluate(&program)
 	if err != nil {

@@ -47,13 +47,13 @@ func (r *Relation) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-func (r *Relation) EqualArity(r2 *Relation, operationNum int) error {
+func (r *Relation) EqualArity(r2 *Relation, position Position) error {
 	for row1 := range *r {
 		for row2 := range *r2 {
 			if !row1.keysEqual(row2) {
 				return &CustomError{
 					ErrorType: ResponseTypes["RT"],
-					Message:   fmt.Sprintf("Incorrect arity in the %d line", operationNum),
+					Message:   fmt.Sprintf("Incorrect arity at %d:%d", position.Line, position.Column),
 				}
 			}
 		}

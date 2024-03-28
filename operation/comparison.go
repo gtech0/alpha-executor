@@ -14,9 +14,10 @@ type Comparison struct {
 }
 
 type parameters struct {
-	kind  string
-	left  *IdentifierExpression
-	right *IdentifierExpression
+	kind     string
+	left     *IdentifierExpression
+	right    *IdentifierExpression
+	position entity.Position
 }
 
 func NewComparison(repository *repository.TestingRepository) *Comparison {
@@ -25,196 +26,127 @@ func NewComparison(repository *repository.TestingRepository) *Comparison {
 
 func (c *Comparison) Compare(params *BinaryExpression) (*entity.Relation, error) {
 	c.parameters = &parameters{
-		kind:  params.kind,
-		left:  params.left.(*IdentifierExpression),
-		right: params.right.(*IdentifierExpression),
+		kind:     params.kind,
+		left:     params.left.(*IdentifierExpression),
+		right:    params.right.(*IdentifierExpression),
+		position: params.position,
 	}
 
 	result := &entity.Relation{}
 	attr := model.Attribute{}
 
-	attributeLeft, err := attr.ExtractAttribute(c.parameters.left.value)
+	attributeLeft, err := attr.ExtractAttribute(c.parameters.left.value, c.parameters.position)
 	if err != nil {
 		return nil, err
 	}
 
-	attributeRight, err := attr.ExtractAttribute(c.parameters.right.value)
+	attributeRight, err := attr.ExtractAttribute(c.parameters.right.value, c.parameters.position)
 	if err != nil {
 		return nil, err
 	}
 
-	//TODO: Refactoring
 	if c.parameters.left.kind == model.ATTRIBUTE.String() && c.parameters.right.kind == model.ATTRIBUTE.String() {
-		relation1, err := c.repository.GetRelation(attributeLeft.Relation)
-		if err != nil {
+		if err := c.twoAttributesCompare(attributeLeft, attributeRight, result); err != nil {
 			return nil, err
-		}
-
-		relation2, err := c.repository.GetRelation(attributeRight.Relation)
-		if err != nil {
-			return nil, err
-		}
-
-		for row1 := range *relation1 {
-			if c.incorrectAttribute(row1, attributeLeft.Attribute) {
-				return nil, &entity.CustomError{
-					ErrorType: entity.ResponseTypes["CE"],
-					Message:   fmt.Sprintf("incorrect attribute %s", attributeLeft.Attribute),
-				}
-			}
-
-			for row2 := range *relation2 {
-				if c.incorrectAttribute(row2, attributeRight.Attribute) {
-					return nil, &entity.CustomError{
-						ErrorType: entity.ResponseTypes["CE"],
-						Message:   fmt.Sprintf("incorrect attribute %s", attributeRight.Attribute),
-					}
-				}
-
-				valuesLeft := (*row1)[attributeLeft.Attribute]
-				valuesRight := (*row2)[attributeRight.Attribute]
-				if len(valuesLeft) != 0 && len(valuesRight) != 0 {
-					for _, valLeft := range valuesLeft {
-						for _, valRight := range valuesRight {
-							c.parameters.left.value = valLeft
-							c.parameters.right.value = valRight
-							if isTrue, err := c.valueComparator(); isTrue && err == nil {
-								(*result)[row1] = struct{}{}
-								(*result)[row2] = struct{}{}
-							}
-
-							if err != nil {
-								return nil, err
-							}
-						}
-					}
-				} else if len(valuesLeft) != 0 {
-					for _, valLeft := range valuesLeft {
-						c.parameters.left.value = valLeft
-						if isTrue, err := c.valueComparator(); isTrue && err == nil {
-							(*result)[row1] = struct{}{}
-						}
-
-						if err != nil {
-							return nil, err
-						}
-					}
-				} else if len(valuesRight) != 0 {
-					for _, valRight := range valuesRight {
-						c.parameters.right.value = valRight
-						if isTrue, err := c.valueComparator(); isTrue && err == nil {
-							(*result)[row2] = struct{}{}
-						}
-
-						if err != nil {
-							return nil, err
-						}
-					}
-				}
-			}
 		}
 	} else if c.parameters.left.kind == model.ATTRIBUTE.String() {
-		relation1, err := c.repository.GetRelation(attributeLeft.Relation)
-		if err != nil {
+		if err := c.oneAttributeCompare(attributeLeft, result); err != nil {
 			return nil, err
-		}
-
-		for row1 := range *relation1 {
-			if c.incorrectAttribute(row1, attributeLeft.Attribute) {
-				return nil, &entity.CustomError{
-					ErrorType: entity.ResponseTypes["CE"],
-					Message:   fmt.Sprintf("incorrect attribute %s", attributeLeft.Attribute),
-				}
-			}
-
-			valuesLeft := (*row1)[attributeLeft.Attribute]
-			if len(valuesLeft) != 0 {
-				for _, valLeft := range valuesLeft {
-					c.parameters.left.value = valLeft
-					if isTrue, err := c.valueComparator(); isTrue && err == nil {
-						(*result)[row1] = struct{}{}
-					}
-
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
 		}
 	} else if c.parameters.right.kind == model.ATTRIBUTE.String() {
-		relation2, err := c.repository.GetRelation(attributeRight.Relation)
-		if err != nil {
+		if err := c.oneAttributeCompare(attributeRight, result); err != nil {
 			return nil, err
-		}
-
-		for row2 := range *relation2 {
-			if c.incorrectAttribute(row2, attributeRight.Attribute) {
-				return nil, &entity.CustomError{
-					ErrorType: entity.ResponseTypes["CE"],
-					Message:   fmt.Sprintf("incorrect attribute %s", attributeRight.Attribute),
-				}
-			}
-
-			valuesRight := (*row2)[attributeRight.Attribute]
-			if len(valuesRight) != 0 {
-				for _, valRight := range valuesRight {
-					c.parameters.right.value = valRight
-					if isTrue, err := c.valueComparator(); isTrue && err == nil {
-						(*result)[row2] = struct{}{}
-					}
-
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
 		}
 	}
 
 	return result, nil
 }
 
+func (c *Comparison) twoAttributesCompare(attributeLeft, attributeRight model.ComplexAttribute, result *entity.Relation) error {
+	relation1, err := c.repository.GetRelation(attributeLeft.Relation)
+	if err != nil {
+		err.(*entity.CustomError).Position = c.parameters.position
+		return err
+	}
+
+	relation2, err := c.repository.GetRelation(attributeRight.Relation)
+	if err != nil {
+		err.(*entity.CustomError).Position = c.parameters.position
+		return err
+	}
+
+	for row1 := range *relation1 {
+		if c.incorrectAttribute(row1, attributeLeft.Attribute) {
+			return &entity.CustomError{
+				ErrorType: entity.ResponseTypes["CE"],
+				Message:   fmt.Sprintf("incorrect attribute %s", attributeLeft.Attribute),
+				Position:  c.parameters.position,
+			}
+		}
+
+		for row2 := range *relation2 {
+			if c.incorrectAttribute(row2, attributeRight.Attribute) {
+				return &entity.CustomError{
+					ErrorType: entity.ResponseTypes["CE"],
+					Message:   fmt.Sprintf("incorrect attribute %s", attributeRight.Attribute),
+					Position:  c.parameters.position,
+				}
+			}
+
+			valuesLeft := (*row1)[attributeLeft.Attribute]
+			valuesRight := (*row2)[attributeRight.Attribute]
+			for _, valLeft := range valuesLeft {
+				for _, valRight := range valuesRight {
+					c.parameters.left.value = valLeft
+					c.parameters.right.value = valRight
+					if isTrue, err := c.valueComparator(); isTrue && err == nil {
+						(*result)[row1] = struct{}{}
+						(*result)[row2] = struct{}{}
+					}
+
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Comparison) oneAttributeCompare(attribute model.ComplexAttribute, result *entity.Relation) error {
+	relation, err := c.repository.GetRelation(attribute.Relation)
+	if err != nil {
+		err.(*entity.CustomError).Position = c.parameters.position
+		return err
+	}
+
+	for row := range *relation {
+		if c.incorrectAttribute(row, attribute.Attribute) {
+			return &entity.CustomError{
+				ErrorType: entity.ResponseTypes["CE"],
+				Message:   fmt.Sprintf("incorrect attribute %s", attribute.Attribute),
+				Position:  c.parameters.position,
+			}
+		}
+
+		values := (*row)[attribute.Attribute]
+		for _, value := range values {
+			c.parameters.left.value = value
+			if isTrue, err := c.valueComparator(); isTrue && err == nil {
+				(*result)[row] = struct{}{}
+			} else if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (*Comparison) incorrectAttribute(row *entity.RowMap, attribute string) bool {
 	_, exists := (*row)[attribute]
 	return !exists
 }
-
-//func (c *Comparison) checkIfAttributeAndCompare(
-//	row1, row2 *entity.RowMap,
-//	valuesLeft, valuesRight []string,
-//	result *entity.Relation,
-//) error {
-//	if len(valuesLeft) != 0 && len(valuesRight) != 0 {
-//		for _, valLeft := range valuesLeft {
-//			for _, valRight := range valuesRight {
-//				c.parameters.left.value = valLeft
-//				c.parameters.right.value = valRight
-//				if err := c.valueComparator(row1, row2, result); err != nil {
-//					return err
-//				}
-//			}
-//		}
-//	} else if len(valuesLeft) != 0 {
-//		for _, valLeft := range valuesLeft {
-//			c.parameters.left.value = valLeft
-//			if err := c.valueComparator(row1, row2, result); err != nil {
-//				return err
-//			}
-//		}
-//	} else if len(valuesRight) != 0 {
-//		for _, valRight := range valuesRight {
-//			c.parameters.right.value = valRight
-//			if err := c.valueComparator(row1, row2, result); err != nil {
-//				return err
-//			}
-//		}
-//	} else {
-//		if err := c.valueComparator(row1, row2, result); err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
 
 func (c *Comparison) valueComparator() (bool, error) {
 	numeric, err := c.numericComparator()
@@ -227,12 +159,13 @@ func (c *Comparison) valueComparator() (bool, error) {
 		return false, err
 	}
 
-	return numeric || str, nil
-}
+	//date, err := c.dateComparator()
+	//if err != nil {
+	//	return false, err
+	//}
 
-//func (c *Comparison) compareTypes(parameters BinaryExpression) bool {
-//	return c.numericComparator(parameters) || c.stringComparator(parameters) //|| c.dateComparator(parameters)
-//}
+	return numeric || str /*|| date*/, nil
+}
 
 func (c *Comparison) numericComparator() (bool, error) {
 	oldValNum, err := strconv.ParseFloat(c.parameters.left.value, 10)
@@ -262,6 +195,7 @@ func (c *Comparison) numericComparator() (bool, error) {
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["CE"],
 			Message:   fmt.Sprintf("Unknown operator %s", c.parameters.kind),
+			Position:  c.parameters.position,
 		}
 	}
 }
@@ -286,6 +220,7 @@ func (c *Comparison) stringComparator() (bool, error) {
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["CE"],
 			Message:   fmt.Sprintf("Unknown operator %s", c.parameters.kind),
+			Position:  c.parameters.position,
 		}
 	}
 }

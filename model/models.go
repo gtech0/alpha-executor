@@ -13,7 +13,3 @@ type (
 		GetResults *entity.Relations `json:"getResults"`
 	}
 )
-
-type RuntimeValue struct {
-	value string
-}

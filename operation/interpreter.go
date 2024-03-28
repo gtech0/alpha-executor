@@ -5,7 +5,6 @@ import (
 	"alpha-executor/model"
 	"alpha-executor/repository"
 	"fmt"
-	"log"
 )
 
 type Interpreter struct {
@@ -18,8 +17,26 @@ func NewInterpreter(repository *repository.TestingRepository) *Interpreter {
 	}
 }
 
+func (i *Interpreter) Evaluate(expression Expression) error {
+	switch expression.GetKind() {
+	case model.PROGRAM.String():
+		err := i.evaluateProgram(expression.(*Program))
+		if err != nil {
+			return err
+		}
+	default:
+		return &entity.CustomError{
+			ErrorType: entity.ResponseTypes["CE"],
+			Message:   "Program undetected: evaluation failed",
+			Position:  entity.Position{},
+		}
+	}
+	//pretty.Print(i.repository.Relations)
+	return nil
+}
+
 func (i *Interpreter) evaluateProgram(program *Program) error {
-	var last any
+	var last *entity.Relation
 
 	for _, expression := range program.body {
 		var err error
@@ -28,11 +45,20 @@ func (i *Interpreter) evaluateProgram(program *Program) error {
 			return err
 		}
 	}
-	i.repository.AddResult(last.(*entity.Relation))
+
+	if len(program.body) == 0 {
+		return &entity.CustomError{
+			ErrorType: entity.ResponseTypes["CE"],
+			Message:   fmt.Sprint("No query to compile"),
+			Position:  entity.Position{},
+		}
+	}
+
+	i.repository.AddResult(last)
 	return nil
 }
 
-func (i *Interpreter) evaluateExpression(expression Expression) (any, error) {
+func (i *Interpreter) evaluateExpression(expression Expression) (*entity.Relation, error) {
 	switch expression.GetKind() {
 	case model.GET.String():
 		return i.evaluateGet(expression.(*GetExpression))
@@ -42,10 +68,13 @@ func (i *Interpreter) evaluateExpression(expression Expression) (any, error) {
 		model.GREATER_THAN_EQUALS.String(),
 		model.LESS_THAN.String(),
 		model.GREATER_THAN.String():
-
 		return i.evaluateComparison(expression.(*BinaryExpression))
 	case model.RANGE.String():
 		return i.evaluateRange(expression.(*RangeExpression))
+	case model.CONJUNCTION.String():
+		return i.evaluateConjunction(expression.(*BinaryExpression))
+	case model.DISJUNCTION.String():
+		return i.evaluateDisjunction(expression.(*BinaryExpression))
 	default:
 		return nil, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
@@ -54,23 +83,13 @@ func (i *Interpreter) evaluateExpression(expression Expression) (any, error) {
 	}
 }
 
-func (i *Interpreter) evaluateComparison(expression *BinaryExpression) (any, error) {
-	comparison := NewComparison(i.repository)
-	result, err := comparison.Compare(expression)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-func (i *Interpreter) evaluateGet(expression *GetExpression) (any, error) {
+func (i *Interpreter) evaluateGet(expression *GetExpression) (*entity.Relation, error) {
 	relation := expression.variable.(*IdentifierExpression)
 	if relation.kind != model.RELATION.String() {
 		return nil, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
-			Message: fmt.Sprintf("Expected relation on position %d:%d",
-				relation.position.Line, relation.position.Column),
+			Message:   fmt.Sprintf("Expected relation"),
+			Position:  relation.position,
 		}
 	}
 
@@ -87,6 +106,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (any, error) {
 			isRelation = true
 			result, err := i.repository.GetRelation(data.(*IdentifierExpression).value)
 			if err != nil {
+				err.(*entity.CustomError).Position = data.(*IdentifierExpression).position
 				return nil, err
 			}
 
@@ -94,9 +114,11 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (any, error) {
 			break
 		case model.ATTRIBUTE.String():
 			attr := model.Attribute{}
-			attribute, err := attr.ExtractAttribute(data.(*IdentifierExpression).value)
+			assertedData := data.(*IdentifierExpression)
+			attribute, err := attr.ExtractAttribute(assertedData.value, assertedData.position)
 			if err != nil {
-				log.Fatal(err)
+				err.(*entity.CustomError).Position = data.(*IdentifierExpression).position
+				return nil, err
 			}
 
 			attributes = append(attributes, attribute.Attribute)
@@ -104,8 +126,8 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (any, error) {
 		default:
 			return nil, &entity.CustomError{
 				ErrorType: entity.ResponseTypes["CE"],
-				Message: fmt.Sprintf("Unexpected type on position %d:%d",
-					relation.position.Line, relation.position.Column),
+				Message:   "Unexpected type",
+				Position:  relation.position,
 			}
 		}
 
@@ -115,8 +137,8 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (any, error) {
 	}
 
 	projection := Projection{}
-	relationPair := entity.Pair[string, *entity.Relation]{Left: relation.value, Right: result.(*entity.Relation)}
-	result, err = projection.Execute(relationPair, attributes)
+	relationPair := entity.Pair[string, *entity.Relation]{Left: relation.value, Right: result}
+	result, err = projection.Execute(relationPair, attributes, relation.position)
 	if err != nil {
 		return nil, err
 	}
@@ -168,17 +190,59 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (any, error) {
 	//}
 }
 
-//func (i *Interpreter) evaluateConjunction(expression *BinaryExpression) (*entity.Relation, error) {
-//
-//}
+func (i *Interpreter) evaluateComparison(expression *BinaryExpression) (*entity.Relation, error) {
+	comparison := NewComparison(i.repository)
+	result, err := comparison.Compare(expression)
+	if err != nil {
+		return nil, err
+	}
 
-//func (i *Interpreter) evaluateDisjunction(expression *BinaryExpression) (*entity.Relation, error) {
-//
-//}
-
-func (i *Interpreter) evaluateHold(expression *HoldExpression) {
-
+	return result, nil
 }
+
+func (i *Interpreter) evaluateRange(expression *RangeExpression) (*entity.Relation, error) {
+	relation, err := i.repository.GetRelation(expression.relation.(*IdentifierExpression).value)
+	if err != nil {
+		return nil, err
+	}
+
+	i.repository.AddRelation(expression.variable.(*IdentifierExpression).value, relation)
+	return relation, nil
+}
+
+func (i *Interpreter) evaluateConjunction(expression *BinaryExpression) (*entity.Relation, error) {
+	left, err := i.evaluateExpression(expression.left)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := i.evaluateExpression(expression.right)
+	if err != nil {
+		return nil, err
+	}
+
+	intersect := Intersection{}
+	return intersect.Execute(left, right, expression.position)
+}
+
+func (i *Interpreter) evaluateDisjunction(expression *BinaryExpression) (*entity.Relation, error) {
+	left, err := i.evaluateExpression(expression.left)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := i.evaluateExpression(expression.right)
+	if err != nil {
+		return nil, err
+	}
+
+	union := Union{}
+	return union.Execute(left, right, expression.position)
+}
+
+//func (i *Interpreter) evaluateHold(expression *HoldExpression) (*entity.Relation, error) {
+//
+//}
 
 //func (i *Interpreter) evaluateForAll(expression BinaryExpression) {
 //	comparison := NewComparison(i.repository)
@@ -195,30 +259,3 @@ func (i *Interpreter) evaluateHold(expression *HoldExpression) {
 //		log.Fatal(err)
 //	}
 //}
-
-func (i *Interpreter) evaluateRange(expression *RangeExpression) (any, error) {
-	relation, err := i.repository.GetRelation(expression.relation.(*IdentifierExpression).value)
-	if err != nil {
-		return nil, err
-	}
-
-	i.repository.AddRelation(expression.variable.(*IdentifierExpression).value, relation)
-	return relation, nil
-}
-
-func (i *Interpreter) Evaluate(expression Expression) error {
-	switch expression.GetKind() {
-	case model.PROGRAM.String():
-		err := i.evaluateProgram(expression.(*Program))
-		if err != nil {
-			return err
-		}
-	default:
-		return &entity.CustomError{
-			ErrorType: entity.ResponseTypes["CE"],
-			Message:   "Program undetected: evaluation failed",
-		}
-	}
-	//pretty.Print(i.repository.Relations)
-	return nil
-}
