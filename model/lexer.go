@@ -25,6 +25,7 @@ const (
 	INTEGER
 	NULL
 	RELATION
+	RANGED_RELATION
 
 	GET
 	RANGE
@@ -41,7 +42,7 @@ const (
 	GREATER_THAN
 	GREATER_THAN_EQUALS
 
-	EXIST
+	EXISTS
 	FOR_ALL
 
 	NEGATION
@@ -60,12 +61,13 @@ var tokens = []string{
 
 	PROGRAM: "PROGRAM",
 
-	ILLEGAL:   "ILLEGAL",
-	ATTRIBUTE: "ATTRIBUTE",
-	CONSTANT:  "CONSTANT",
-	INTEGER:   "INTEGER",
-	NULL:      "NULL",
-	RELATION:  "RELATION",
+	ILLEGAL:         "ILLEGAL",
+	ATTRIBUTE:       "ATTRIBUTE",
+	CONSTANT:        "CONSTANT",
+	INTEGER:         "INTEGER",
+	NULL:            "NULL",
+	RELATION:        "RELATION",
+	RANGED_RELATION: "RANGED_RELATION",
 
 	GET:     "GET",
 	RANGE:   "RANGE",
@@ -82,8 +84,8 @@ var tokens = []string{
 	GREATER_THAN:        ">",
 	GREATER_THAN_EQUALS: "≥",
 
-	EXIST:   "∃",
-	FOR_ALL: "∀",
+	EXISTS:  "∃", //какие-то кортежи удовлетворяют условию
+	FOR_ALL: "∀", //     все
 
 	NEGATION:    "¬",
 	CONJUNCTION: "∧",
@@ -120,7 +122,6 @@ func (l *Lexer) Lex() [][]Token {
 	result := make([]Token, 0)
 	for {
 		r, _, err := l.reader.ReadRune()
-		//fmt.Print(string(r) + "\n")
 		if err != nil {
 			if err == io.EOF {
 				l.results = append(l.results, result)
@@ -160,7 +161,7 @@ func (l *Lexer) Lex() [][]Token {
 			result = append(result, Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
 			break
 		case '∃':
-			result = append(result, Token{EXIST, EXIST.String(), l.pos})
+			result = append(result, Token{EXISTS, EXISTS.String(), l.pos})
 			break
 		case '∀':
 			result = append(result, Token{FOR_ALL, FOR_ALL.String(), l.pos})
@@ -199,8 +200,8 @@ func (l *Lexer) Lex() [][]Token {
 				break
 			} else if unicode.IsLetter(r) {
 				l.backup()
-				lit, period := l.lexStr()
-				if period {
+				lit, hasPeriod := l.lexStr()
+				if hasPeriod {
 					result = append(result, Token{ATTRIBUTE, lit, l.pos})
 					break
 				}
@@ -228,6 +229,11 @@ func (l *Lexer) Lex() [][]Token {
 					result = append(result, Token{PUT, lit, l.pos})
 					break
 				default:
+					if len(result) == 2 && result[0].Type == RANGE || result[len(result)-1].Type == EXISTS {
+						result = append(result, Token{RANGED_RELATION, lit, l.pos})
+						break
+					}
+
 					result = append(result, Token{RELATION, lit, l.pos})
 					break
 				}

@@ -4,6 +4,7 @@ import (
 	"alpha-executor/entity"
 	"alpha-executor/model"
 	"bufio"
+	"github.com/kr/pretty"
 )
 
 type Expression interface {
@@ -111,6 +112,7 @@ func GenerateAST(reader *bufio.Reader) Program {
 	program := Program{model.PROGRAM.String(), make([]Expression, 0)}
 	lexer := model.NewLexer(reader)
 	output := lexer.Lex()
+	pretty.Print(output)
 	for _, query := range output {
 		if len(query) > 0 {
 			//for _, token := range query {

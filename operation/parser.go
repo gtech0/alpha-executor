@@ -53,9 +53,10 @@ func (p *Parser) parseImplication() Expression {
 		operator := p.next().Value
 		right := p.parseDisjunction()
 		left = &BinaryExpression{
-			kind:  operator,
-			left:  left,
-			right: right,
+			kind:     operator,
+			left:     left,
+			right:    right,
+			position: p.peek().Position,
 		}
 	}
 
@@ -69,9 +70,10 @@ func (p *Parser) parseDisjunction() Expression {
 		operator := p.next().Value
 		right := p.parseConjunction()
 		left = &BinaryExpression{
-			kind:  operator,
-			left:  left,
-			right: right,
+			kind:     operator,
+			left:     left,
+			right:    right,
+			position: p.peek().Position,
 		}
 	}
 
@@ -85,9 +87,10 @@ func (p *Parser) parseConjunction() Expression {
 		operator := p.next().Value
 		right := p.parseComparison()
 		left = &BinaryExpression{
-			kind:  operator,
-			left:  left,
-			right: right,
+			kind:     operator,
+			left:     left,
+			right:    right,
+			position: p.peek().Position,
 		}
 	}
 
@@ -110,9 +113,10 @@ func (p *Parser) parseComparison() Expression {
 		operator := p.next().Value
 		right := p.parsePrimary()
 		left = &BinaryExpression{
-			kind:  operator,
-			left:  left,
-			right: right,
+			kind:     operator,
+			left:     left,
+			right:    right,
+			position: p.peek().Position,
 		}
 	}
 
@@ -123,27 +127,15 @@ func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
 	position := p.peek().Position
 	switch parsedType {
-	case model.ATTRIBUTE:
+	case model.ATTRIBUTE, model.RELATION, model.RANGED_RELATION, model.CONSTANT, model.INTEGER:
 		token := p.next()
-		return &IdentifierExpression{model.ATTRIBUTE.String(), token.Value, token.Position}
-	case model.RELATION:
-		token := p.next()
-		return &IdentifierExpression{model.RELATION.String(), token.Value, token.Position}
-	case model.CONSTANT:
-		token := p.next()
-		return &IdentifierExpression{model.CONSTANT.String(), token.Value, token.Position}
-	case model.INTEGER:
-		token := p.next()
-		return &IdentifierExpression{model.INTEGER.String(), token.Value, token.Position}
+		return &IdentifierExpression{parsedType.String(), token.Value, token.Position}
 	case model.NEGATION:
 		p.next()
-		return &UnaryExpression{model.NEGATION.String(), p.parsePrimary(), position}
-	case model.EXIST:
+		return &UnaryExpression{parsedType.String(), p.parsePrimary(), position}
+	case model.EXISTS, model.FOR_ALL:
 		p.next()
-		return &BinaryExpression{model.EXIST.String(), p.parsePrimary(), p.parseComparison(), position}
-	case model.FOR_ALL:
-		p.next()
-		return &BinaryExpression{model.FOR_ALL.String(), p.parsePrimary(), p.parseComparison(), position}
+		return &BinaryExpression{parsedType.String(), p.parsePrimary(), p.parseComparison(), position}
 	case model.LEFT_PARENTHESIS:
 		p.next()
 		value := p.ParseExpression()
@@ -153,27 +145,26 @@ func (p *Parser) parsePrimary() Expression {
 		p.next()
 		variable := p.parsePrimary()
 		rows, relations := p.parseRowNumAndRelation()
-		return &GetExpression{model.GET.String(), variable, rows, relations, p.ParseExpression(), position}
+		return &GetExpression{parsedType.String(), variable, rows, relations, p.ParseExpression(), position}
 	case model.COMMA:
 		p.next()
 		return p.parsePrimary()
 	case model.RANGE:
 		p.next()
-		return &RangeExpression{model.RANGE.String(), p.parsePrimary(), p.parsePrimary(), position}
+		return &RangeExpression{parsedType.String(), p.parsePrimary(), p.parsePrimary(), position}
 	case model.HOLD:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return &HoldExpression{model.HOLD.String(), variable, relations, p.ParseExpression(), position}
+		return &HoldExpression{parsedType.String(), variable, relations, p.ParseExpression(), position}
 	case model.RELEASE, model.UPDATE, model.DELETE:
-		kind := parsedType.String()
 		p.next()
-		return &OperationExpression{kind, p.parsePrimary(), position}
+		return &OperationExpression{parsedType.String(), p.parsePrimary(), position}
 	case model.PUT:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return &PutExpression{model.PUT.String(), variable, relations, position}
+		return &PutExpression{parsedType.String(), variable, relations, position}
 	case model.LOGIC_START:
 		p.next()
 		return p.ParseExpression()

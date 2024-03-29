@@ -12,8 +12,8 @@ import (
 
 //func main() {
 //	testingRepository := repository.NewTestingRepository(
-//		make(entity.Relations),
-//		make(entity.Relations),
+//		make(entity.relations),
+//		make(entity.relations),
 //	)
 //	executorService := service.NewExecutorService(testingRepository)
 //	requestController := controller.NewRequestController(executorService)
@@ -51,7 +51,7 @@ func main() {
 	//program := service.GenerateAST(bufio.NewReader(reader))
 	//pretty.Print(program)
 	//
-	//testingRepository := repository.NewTestingRepository(receiver.Relations, make(entity.Relations), make(entity.Relation))
+	//testingRepository := repository.NewTestingRepository(receiver.relations, make(entity.relations), make(entity.Relation))
 	//interpreter := service.NewInterpreter(testingRepository)
 	//interpreter.Evaluate(program)
 }

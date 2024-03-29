@@ -15,8 +15,8 @@ type Comparison struct {
 
 type parameters struct {
 	kind     string
-	left     *IdentifierExpression
-	right    *IdentifierExpression
+	left     IdentifierExpression
+	right    IdentifierExpression
 	position entity.Position
 }
 
@@ -27,8 +27,8 @@ func NewComparison(repository *repository.TestingRepository) *Comparison {
 func (c *Comparison) Compare(params *BinaryExpression) (*entity.Relation, error) {
 	c.parameters = &parameters{
 		kind:     params.kind,
-		left:     params.left.(*IdentifierExpression),
-		right:    params.right.(*IdentifierExpression),
+		left:     *params.left.(*IdentifierExpression),
+		right:    *params.right.(*IdentifierExpression),
 		position: params.position,
 	}
 

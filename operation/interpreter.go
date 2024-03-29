@@ -31,7 +31,7 @@ func (i *Interpreter) Evaluate(expression Expression) error {
 			Position:  entity.Position{},
 		}
 	}
-	//pretty.Print(i.repository.Relations)
+	//pretty.Print(i.repository.relations)
 	return nil
 }
 
@@ -60,6 +60,10 @@ func (i *Interpreter) evaluateProgram(program *Program) error {
 
 func (i *Interpreter) evaluateExpression(expression Expression) (*entity.Relation, error) {
 	switch expression.GetKind() {
+	case model.RELATION.String():
+		return i.repository.GetRelation(expression.(*IdentifierExpression).value)
+	case model.RANGED_RELATION.String():
+		return i.repository.GetRangedRelation(expression.(*IdentifierExpression).value)
 	case model.GET.String():
 		return i.evaluateGet(expression.(*GetExpression))
 	case model.EQUALS.String(),
@@ -75,6 +79,8 @@ func (i *Interpreter) evaluateExpression(expression Expression) (*entity.Relatio
 		return i.evaluateConjunction(expression.(*BinaryExpression))
 	case model.DISJUNCTION.String():
 		return i.evaluateDisjunction(expression.(*BinaryExpression))
+	case model.EXISTS.String():
+		return i.evaluateExists(expression.(*BinaryExpression))
 	default:
 		return nil, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
@@ -104,7 +110,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (*entity.Relation, 
 		switch data.GetKind() {
 		case model.RELATION.String():
 			isRelation = true
-			result, err := i.repository.GetRelation(data.(*IdentifierExpression).value)
+			result, err := i.evaluateExpression(data.(*IdentifierExpression))
 			if err != nil {
 				err.(*entity.CustomError).Position = data.(*IdentifierExpression).position
 				return nil, err
@@ -186,7 +192,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (*entity.Relation, 
 	//			log.Fatal(err)
 	//		}
 	//	}
-	//	i.repository.AddIntermediateRelation(relationPair.Left, relPair1.Right)
+	//	i.repository.AddRangedRelation(relationPair.Left, relPair1.Right)
 	//}
 }
 
@@ -206,7 +212,7 @@ func (i *Interpreter) evaluateRange(expression *RangeExpression) (*entity.Relati
 		return nil, err
 	}
 
-	i.repository.AddRelation(expression.variable.(*IdentifierExpression).value, relation)
+	i.repository.AddRangedRelation(expression.variable.(*IdentifierExpression).value, relation)
 	return relation, nil
 }
 
@@ -240,9 +246,30 @@ func (i *Interpreter) evaluateDisjunction(expression *BinaryExpression) (*entity
 	return union.Execute(left, right, expression.position)
 }
 
-//func (i *Interpreter) evaluateHold(expression *HoldExpression) (*entity.Relation, error) {
-//
-//}
+func (i *Interpreter) evaluateExists(expression *BinaryExpression) (*entity.Relation, error) {
+	left, err := i.evaluateExpression(expression.left)
+	if err != nil {
+		return nil, err
+	}
+
+	relation := make(entity.Relation)
+	for row := range *left {
+		singleRowRelation := make(entity.Relation)
+		singleRowRelation[row] = struct{}{}
+		i.repository.AddRelation(expression.left.(*IdentifierExpression).value, &singleRowRelation)
+
+		right, err := i.evaluateExpression(expression.right)
+		if err != nil {
+			return nil, err
+		}
+
+		for newRow := range *right {
+			relation[newRow] = struct{}{}
+		}
+	}
+
+	return &relation, nil
+}
 
 //func (i *Interpreter) evaluateForAll(expression BinaryExpression) {
 //	comparison := NewComparison(i.repository)
@@ -251,11 +278,7 @@ func (i *Interpreter) evaluateDisjunction(expression *BinaryExpression) (*entity
 //		log.Fatal(err)
 //	}
 //}
+
+//func (i *Interpreter) evaluateHold(expression *HoldExpression) (*entity.Relation, error) {
 //
-//func (i *Interpreter) evaluateExists(expression BinaryExpression) {
-//	comparison := NewComparison(i.repository)
-//	err := comparison.Compare(relation, expression)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
 //}
