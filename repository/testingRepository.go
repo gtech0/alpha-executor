@@ -6,20 +6,42 @@ import (
 )
 
 type TestingRepository struct {
-	relations       entity.Relations
-	rangedRelations entity.Relations
-	result          entity.Relation
+	rows      entity.RowsMap
+	relations entity.Relations
+	result    entity.Relation
 }
 
 func NewTestingRepository(
+	rows entity.RowsMap,
 	relations entity.Relations,
-	rangedRelations entity.Relations,
 	result entity.Relation,
 ) *TestingRepository {
 	return &TestingRepository{
-		relations:       relations,
-		rangedRelations: rangedRelations,
-		result:          result,
+		rows:      rows,
+		relations: relations,
+		result:    result,
+	}
+}
+
+func (t *TestingRepository) AddRow(name string, row *entity.RowMap) {
+	t.rows[name] = row
+}
+
+func (t *TestingRepository) AddRows(rows entity.RowsMap) {
+	for name, row := range rows {
+		t.rows[name] = row
+	}
+}
+
+func (t *TestingRepository) GetRow(name string) (*entity.RowMap, error) {
+	result := t.rows[name]
+	if result != nil {
+		return result, nil
+	}
+
+	return nil, &entity.CustomError{
+		ErrorType: entity.ResponseTypes["CE"],
+		Message:   fmt.Sprintf("row %s is null", name),
 	}
 }
 
@@ -45,22 +67,6 @@ func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
 	}
 }
 
-func (t *TestingRepository) AddRangedRelation(name string, relation *entity.Relation) {
-	t.rangedRelations[name] = relation
-}
-
-func (t *TestingRepository) GetRangedRelation(name string) (*entity.Relation, error) {
-	result := t.rangedRelations[name]
-	if result != nil {
-		return result, nil
-	}
-
-	return nil, &entity.CustomError{
-		ErrorType: entity.ResponseTypes["CE"],
-		Message:   fmt.Sprintf("ranged relation %s is null", name),
-	}
-}
-
 func (t *TestingRepository) AddResult(rel *entity.Relation) {
 	t.result = *rel
 }
@@ -78,7 +84,7 @@ func (t *TestingRepository) GetResult() (*entity.Relation, error) {
 }
 
 func (t *TestingRepository) Clear() {
+	clear(t.rows)
 	clear(t.relations)
-	clear(t.rangedRelations)
 	clear(t.result)
 }

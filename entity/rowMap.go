@@ -1,6 +1,7 @@
 package entity
 
 type RowMap map[string][]string
+type RowsMap map[string]*RowMap
 
 func (r *RowMap) RowsEqual(r2 *RowMap) bool {
 	if !r.keysEqual(r2) {

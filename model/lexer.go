@@ -25,7 +25,6 @@ const (
 	INTEGER
 	NULL
 	RELATION
-	RANGED_RELATION
 
 	GET
 	RANGE
@@ -61,13 +60,12 @@ var tokens = []string{
 
 	PROGRAM: "PROGRAM",
 
-	ILLEGAL:         "ILLEGAL",
-	ATTRIBUTE:       "ATTRIBUTE",
-	CONSTANT:        "CONSTANT",
-	INTEGER:         "INTEGER",
-	NULL:            "NULL",
-	RELATION:        "RELATION",
-	RANGED_RELATION: "RANGED_RELATION",
+	ILLEGAL:   "ILLEGAL",
+	ATTRIBUTE: "ATTRIBUTE",
+	CONSTANT:  "CONSTANT",
+	INTEGER:   "INTEGER",
+	NULL:      "NULL",
+	RELATION:  "RELATION",
 
 	GET:     "GET",
 	RANGE:   "RANGE",
@@ -229,11 +227,6 @@ func (l *Lexer) Lex() [][]Token {
 					result = append(result, Token{PUT, lit, l.pos})
 					break
 				default:
-					if len(result) == 2 && result[0].Type == RANGE || result[len(result)-1].Type == EXISTS {
-						result = append(result, Token{RANGED_RELATION, lit, l.pos})
-						break
-					}
-
 					result = append(result, Token{RELATION, lit, l.pos})
 					break
 				}

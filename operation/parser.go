@@ -127,7 +127,7 @@ func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
 	position := p.peek().Position
 	switch parsedType {
-	case model.ATTRIBUTE, model.RELATION, model.RANGED_RELATION, model.CONSTANT, model.INTEGER:
+	case model.ATTRIBUTE, model.RELATION, model.CONSTANT, model.INTEGER:
 		token := p.next()
 		return &IdentifierExpression{parsedType.String(), token.Value, token.Position}
 	case model.NEGATION:

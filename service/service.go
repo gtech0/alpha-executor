@@ -46,6 +46,5 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 
 	return model.TestingSender{
 		Result: output,
-		//GetResults: e.testingRepository.GetRangedRelation(),
 	}, nil
 }

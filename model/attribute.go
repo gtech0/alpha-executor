@@ -2,6 +2,7 @@ package model
 
 import (
 	"alpha-executor/entity"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -12,6 +13,27 @@ type Attribute struct {
 type ComplexAttribute struct {
 	Relation  string
 	Attribute string
+}
+
+func (a *Attribute) ReturnExistentAttribute(relations entity.Relations, attribute string) (string, error) {
+	for name, relation := range relations {
+		for row := range *relation {
+			slicedAttribute, err := a.ExtractAttribute(attribute, entity.Position{})
+			if err != nil || (slicedAttribute.Relation != name && slicedAttribute.Relation != "") {
+				break
+			}
+
+			_, exists := (*row)[slicedAttribute.Attribute]
+			if exists {
+				return slicedAttribute.Attribute, nil
+			}
+		}
+	}
+
+	return "", &entity.CustomError{
+		ErrorType: entity.ResponseTypes["CE"],
+		Message:   fmt.Sprintf("attribute %s doesn't exist", attribute),
+	}
 }
 
 func (*Attribute) ExtractAttribute(attribute string, position entity.Position) (ComplexAttribute, error) {

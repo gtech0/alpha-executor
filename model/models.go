@@ -9,7 +9,6 @@ type (
 	}
 
 	TestingSender struct {
-		Result     *entity.Relation  `json:"result"`
-		GetResults *entity.Relations `json:"getResults"`
+		Result *entity.Relation `json:"result"`
 	}
 )
