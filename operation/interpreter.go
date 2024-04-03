@@ -6,6 +6,7 @@ import (
 	"alpha-executor/repository"
 	"fmt"
 	"log"
+	"slices"
 )
 
 type Interpreter struct {
@@ -61,8 +62,6 @@ func (i *Interpreter) evaluateProgram(program *Program) error {
 
 func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 	switch expression.GetKind() {
-	//case model.RELATION.String():
-	//	return i.repository.GetRelation(expression.(*IdentifierExpression).value)
 	case model.GET.String():
 		return i.evaluateGet(expression.(*GetExpression))
 	case model.EQUALS.String(),
@@ -80,6 +79,8 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 		return i.evaluateDisjunction(expression.(*BinaryExpression))
 	case model.EXISTS.String():
 		return i.evaluateExists(expression.(*BinaryExpression))
+	case model.FOR_ALL.String():
+		return i.evaluateForAll(expression.(*BinaryExpression))
 	default:
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
@@ -98,18 +99,19 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		}
 	}
 
-	attributes := make(map[string][]string)
+	result, err := i.evaluateExpression(expression.expression)
+	if err != nil {
+		err.(*entity.CustomError).Position = expression.position
+		return false, err
+	}
+
+	relations := make([]string, 0)
+	attributes := make([]string, 0)
 	isRelation := false
 	for _, data := range expression.relations {
 		switch data.GetKind() {
 		case model.RELATION.String():
 			isRelation = true
-			result, err := i.evaluateExpression(expression.expression)
-			if err != nil {
-				err.(*entity.CustomError).Position = data.(*IdentifierExpression).position
-				return false, err
-			}
-
 			if result {
 				final, err := i.repository.GetRelation(data.(*IdentifierExpression).value)
 				if err != nil {
@@ -128,8 +130,13 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 				return false, err
 			}
 
-			currentAttributes := attributes[attribute.Attribute]
-			attributes[attribute.Attribute] = append(currentAttributes, attribute.Relation)
+			if !slices.Contains(relations, attribute.Relation) {
+				relations = append(relations, attribute.Relation)
+			}
+
+			if !slices.Contains(relations, attribute.Attribute) {
+				attributes = append(attributes, attribute.Attribute)
+			}
 			break
 		default:
 			return false, &entity.CustomError{
@@ -144,55 +151,74 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		}
 	}
 
-	if !isRelation {
-		relations := make([]entity.Pair[string, *entity.Relation], 0)
-		for rel, attrs := range attributes {
-			projection := Projection{}
-			ranged, err := i.repository.GetRelation(rel)
-			relationPair := entity.Pair[string, *entity.Relation]{Left: rel, Right: ranged}
-			result, err := projection.Execute(relationPair, attrs, relation.position)
-			if err != nil {
-				return false, err
-			}
-
-			relations = append(relations, entity.Pair[string, *entity.Relation]{Left: rel, Right: result})
+	if !isRelation && result {
+		rel, err := i.joiningRelations(relations)
+		if err != nil {
+			return false, err
 		}
 
-		join := Join{}
-		if len(relations) > 0 {
-			rel1 := relations[0]
-			relations = relations[1:]
-			for len(relations) > 0 {
-				rel2 := relations[0]
-				commonAttributes := make([]string, 0)
-				for row1 := range *rel1.Right {
-					for row2 := range *rel2.Right {
-						exists := make(map[string]struct{})
-						for key := range *row1 {
-							exists[key] = struct{}{}
-						}
-
-						for key := range *row2 {
-							if _, ok := exists[key]; ok {
-								commonAttributes = append(commonAttributes, key)
-							}
-						}
-						break
-					}
-					break
-				}
-
-				var err error
-				rel1.Right, err = join.Execute(rel1, rel2, commonAttributes)
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-			i.repository.AddResult(rel1.Right)
+		projection := Projection{}
+		relationPair := entity.Pair[string, *entity.Relation]{Left: relation.value, Right: rel}
+		result, err := projection.Execute(relationPair, attributes, relation.position)
+		if err != nil {
+			return false, err
 		}
+
+		i.repository.AddResult(result)
 	}
 
 	return true, nil
+}
+
+func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, error) {
+	join := Join{}
+	for _, rel := range relations {
+		rel1, err := i.repository.GetRelation(rel)
+		if err != nil {
+			return nil, err
+		}
+
+		rel1Pair := entity.Pair[string, *entity.Relation]{Left: rel, Right: rel1}
+		relations = relations[1:]
+		for _, rel := range relations {
+			rel2, err := i.repository.GetRelation(rel)
+			if err != nil {
+				return nil, err
+			}
+
+			rel2Pair := entity.Pair[string, *entity.Relation]{Left: rel, Right: rel2}
+			relations = relations[1:]
+			commonAttributes := make([]string, 0)
+			for row1 := range *rel1Pair.Right {
+				for row2 := range *rel2Pair.Right {
+					exists := make(map[string]struct{})
+					for key := range *row1 {
+						exists[key] = struct{}{}
+					}
+
+					for key := range *row2 {
+						if _, ok := exists[key]; ok {
+							commonAttributes = append(commonAttributes, key)
+						}
+					}
+					break
+				}
+				break
+			}
+
+			rel1Pair.Right, err = join.Execute(rel1Pair, rel2Pair, commonAttributes)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		return rel1, nil
+	}
+
+	return nil, &entity.CustomError{
+		ErrorType: entity.ResponseTypes["RT"],
+		Message:   "Relation join error",
+		Position:  entity.Position{},
+	}
 }
 
 func (i *Interpreter) evaluateComparison(expression *BinaryExpression) (bool, error) {
@@ -261,13 +287,28 @@ func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error)
 	return false, nil
 }
 
-//func (i *Interpreter) evaluateForAll(expression BinaryExpression) {
-//	comparison := NewComparison(i.repository)
-//	err := comparison.Compare(relation, expression)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//}
+func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error) {
+	left, err := i.repository.GetRelation(expression.left.(*IdentifierExpression).value)
+	if err != nil {
+		return false, err
+	}
+
+	for row := range *left {
+		relationName := expression.left.(*IdentifierExpression).value
+		i.repository.AddRow(relationName, row)
+
+		right, err := i.evaluateExpression(expression.right)
+		if err != nil {
+			return false, err
+		}
+
+		if !right {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
 
 //func (i *Interpreter) evaluateHold(expression *HoldExpression) (*entity.Relation, error) {
 //
