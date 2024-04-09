@@ -6,20 +6,20 @@ import (
 )
 
 type TestingRepository struct {
-	rows      entity.RowsMap
-	relations entity.Relations
-	result    entity.Relation
+	rows          entity.RowsMap
+	freeRelations entity.Relations
+	result        entity.Relation
 }
 
 func NewTestingRepository(
 	rows entity.RowsMap,
-	relations entity.Relations,
+	freeRelations entity.Relations,
 	result entity.Relation,
 ) *TestingRepository {
 	return &TestingRepository{
-		rows:      rows,
-		relations: relations,
-		result:    result,
+		rows:          rows,
+		freeRelations: freeRelations,
+		result:        result,
 	}
 }
 
@@ -45,18 +45,18 @@ func (t *TestingRepository) GetRow(name string) (*entity.RowMap, error) {
 	}
 }
 
-func (t *TestingRepository) AddRelation(name string, relation *entity.Relation) {
-	t.relations[name] = relation
+func (t *TestingRepository) AddFreeRelation(name string, relation *entity.Relation) {
+	t.freeRelations[name] = relation
 }
 
-func (t *TestingRepository) AddRelations(relations entity.Relations) {
+func (t *TestingRepository) AddFreeRelations(relations entity.Relations) {
 	for name, relation := range relations {
-		t.relations[name] = relation
+		t.freeRelations[name] = relation
 	}
 }
 
-func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
-	result := t.relations[name]
+func (t *TestingRepository) GetFreeRelation(name string) (*entity.Relation, error) {
+	result := t.freeRelations[name]
 	if result != nil {
 		return result, nil
 	}
@@ -85,6 +85,6 @@ func (t *TestingRepository) GetResult() (*entity.Relation, error) {
 
 func (t *TestingRepository) Clear() {
 	clear(t.rows)
-	clear(t.relations)
+	clear(t.freeRelations)
 	clear(t.result)
 }

@@ -91,7 +91,7 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 
 func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error) {
 	relationName := expression.left.(*IdentifierExpression).value
-	left, err := i.repository.GetRelation(relationName)
+	left, err := i.repository.GetFreeRelation(relationName)
 	if err != nil {
 		return false, err
 	}
@@ -114,7 +114,7 @@ func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error)
 
 func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error) {
 	relationName := expression.left.(*IdentifierExpression).value
-	left, err := i.repository.GetRelation(relationName)
+	left, err := i.repository.GetFreeRelation(relationName)
 	if err != nil {
 		return false, err
 	}
@@ -135,9 +135,47 @@ func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error)
 	return true, nil
 }
 
+/*
+	func relationIterator {
+		iterate through a list of relation names {
+			get relation
+			remove relation name from list
+			iterate through relation {
+
+			}
+		}
+	}
+*/
+func (i *Interpreter) evaluateFreeRelation(relations []string, expression Expression) (bool, error) {
+	relationName := relations[0]
+	relations = relations[1:]
+	relation, err := i.repository.GetFreeRelation(relationName)
+	if err != nil {
+		return false, err
+	}
+
+	result := false
+	for row := range *relation {
+		i.repository.AddRow(relationName, row)
+		if len(relations) > 0 {
+			result, err = i.evaluateFreeRelation(relations, expression)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			result, err = i.evaluateExpression(expression)
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+
+	return result, nil
+}
+
 func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 	relation := expression.variable.(*IdentifierExpression)
-	if relation.kind != model.RELATION.String() {
+	if relation.kind != model.FREE_RELATION.String() {
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
 			Message:   fmt.Sprintf("Expected relation"),
@@ -150,7 +188,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 	isRelation := false
 	for _, data := range expression.relations {
 		switch data.GetKind() {
-		case model.RELATION.String():
+		case model.FREE_RELATION.String():
 			isRelation = true
 			relations = append(relations, data.(*IdentifierExpression).value)
 			break
@@ -184,19 +222,10 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		}
 	}
 
-	result := false
-	var err error
-	switch expression.expression.GetKind() {
-	case model.EXISTS.String(), model.FOR_ALL.String():
-		result, err = i.evaluateExpression(expression.expression)
-		if err != nil {
-			err.(*entity.CustomError).Position = expression.position
-			return false, err
-		}
-		break
-	default:
-		//expression.expression.(*BinaryExpression).
-		break
+	result, err := i.evaluateFreeRelation(relations, expression.expression)
+	if err != nil {
+		err.(*entity.CustomError).Position = expression.position
+		return false, err
 	}
 
 	if !isRelation && result {
@@ -214,7 +243,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 
 		i.repository.AddResult(projected)
 	} else if isRelation && result {
-		final, err := i.repository.GetRelation(relations[0])
+		final, err := i.repository.GetFreeRelation(relations[0])
 		if err != nil {
 			return false, err
 		}
@@ -228,7 +257,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, error) {
 	join := Join{}
 	for _, rel := range relations {
-		rel1, err := i.repository.GetRelation(rel)
+		rel1, err := i.repository.GetFreeRelation(rel)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +265,7 @@ func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, er
 		rel1Pair := entity.Pair[string, *entity.Relation]{Left: rel, Right: rel1}
 		relations = relations[1:]
 		for _, rel := range relations {
-			rel2, err := i.repository.GetRelation(rel)
+			rel2, err := i.repository.GetFreeRelation(rel)
 			if err != nil {
 				return nil, err
 			}
@@ -282,12 +311,12 @@ func (i *Interpreter) evaluateComparison(expression *BinaryExpression) (bool, er
 }
 
 func (i *Interpreter) evaluateRange(expression *RangeExpression) (bool, error) {
-	relation, err := i.repository.GetRelation(expression.relation.(*IdentifierExpression).value)
+	relation, err := i.repository.GetFreeRelation(expression.relation.(*IdentifierExpression).value)
 	if err != nil {
 		return false, err
 	}
 
-	i.repository.AddRelation(expression.variable.(*IdentifierExpression).value, relation)
+	i.repository.AddFreeRelation(expression.variable.(*IdentifierExpression).value, relation)
 	return true, nil
 }
 

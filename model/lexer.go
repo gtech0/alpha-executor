@@ -24,7 +24,8 @@ const (
 	CONSTANT
 	INTEGER
 	NULL
-	RELATION
+	FREE_RELATION
+	BIND_RELATION
 
 	GET
 	RANGE
@@ -60,12 +61,13 @@ var tokens = []string{
 
 	PROGRAM: "PROGRAM",
 
-	ILLEGAL:   "ILLEGAL",
-	ATTRIBUTE: "ATTRIBUTE",
-	CONSTANT:  "CONSTANT",
-	INTEGER:   "INTEGER",
-	NULL:      "NULL",
-	RELATION:  "RELATION",
+	ILLEGAL:       "ILLEGAL",
+	ATTRIBUTE:     "ATTRIBUTE",
+	CONSTANT:      "CONSTANT",
+	INTEGER:       "INTEGER",
+	NULL:          "NULL",
+	FREE_RELATION: "FREE_RELATION",
+	BIND_RELATION: "BIND_RELATION",
 
 	GET:     "GET",
 	RANGE:   "RANGE",
@@ -105,19 +107,19 @@ type Token struct {
 type Lexer struct {
 	pos     entity.Position
 	reader  *bufio.Reader
-	results [][]Token
+	results [][]*Token
 }
 
 func NewLexer(reader *bufio.Reader) *Lexer {
 	return &Lexer{
 		pos:     entity.Position{Line: 1, Column: 0},
 		reader:  reader,
-		results: make([][]Token, 0),
+		results: make([][]*Token, 0),
 	}
 }
 
-func (l *Lexer) Lex() [][]Token {
-	result := make([]Token, 0)
+func (l *Lexer) Lex() [][]*Token {
+	result := make([]*Token, 0)
 	for {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
@@ -133,7 +135,7 @@ func (l *Lexer) Lex() [][]Token {
 
 		if r == ';' {
 			l.results = append(l.results, result)
-			result = make([]Token, 0)
+			result = make([]*Token, 0)
 			continue
 		}
 
@@ -141,52 +143,52 @@ func (l *Lexer) Lex() [][]Token {
 		case '\n':
 			l.nextLine()
 		case '=':
-			result = append(result, Token{EQUALS, EQUALS.String(), l.pos})
+			result = append(result, &Token{EQUALS, EQUALS.String(), l.pos})
 			break
 		case '≠':
-			result = append(result, Token{NOT_EQUALS, NOT_EQUALS.String(), l.pos})
+			result = append(result, &Token{NOT_EQUALS, NOT_EQUALS.String(), l.pos})
 			break
 		case '<':
-			result = append(result, Token{LESS_THAN, LESS_THAN.String(), l.pos})
+			result = append(result, &Token{LESS_THAN, LESS_THAN.String(), l.pos})
 			break
 		case '≤':
-			result = append(result, Token{LESS_THAN_EQUALS, LESS_THAN_EQUALS.String(), l.pos})
+			result = append(result, &Token{LESS_THAN_EQUALS, LESS_THAN_EQUALS.String(), l.pos})
 			break
 		case '>':
-			result = append(result, Token{GREATER_THAN, GREATER_THAN.String(), l.pos})
+			result = append(result, &Token{GREATER_THAN, GREATER_THAN.String(), l.pos})
 			break
 		case '≥':
-			result = append(result, Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
+			result = append(result, &Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
 			break
 		case '∃':
-			result = append(result, Token{EXISTS, EXISTS.String(), l.pos})
+			result = append(result, &Token{EXISTS, EXISTS.String(), l.pos})
 			break
 		case '∀':
-			result = append(result, Token{FOR_ALL, FOR_ALL.String(), l.pos})
+			result = append(result, &Token{FOR_ALL, FOR_ALL.String(), l.pos})
 			break
 		case '¬':
-			result = append(result, Token{NEGATION, NEGATION.String(), l.pos})
+			result = append(result, &Token{NEGATION, NEGATION.String(), l.pos})
 			break
 		case '∧':
-			result = append(result, Token{CONJUNCTION, CONJUNCTION.String(), l.pos})
+			result = append(result, &Token{CONJUNCTION, CONJUNCTION.String(), l.pos})
 			break
 		case '∨':
-			result = append(result, Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
+			result = append(result, &Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
 			break
 		case '→':
-			result = append(result, Token{IMPLICATION, IMPLICATION.String(), l.pos})
+			result = append(result, &Token{IMPLICATION, IMPLICATION.String(), l.pos})
 			break
 		case '(':
-			result = append(result, Token{LEFT_PARENTHESIS, LEFT_PARENTHESIS.String(), l.pos})
+			result = append(result, &Token{LEFT_PARENTHESIS, LEFT_PARENTHESIS.String(), l.pos})
 			break
 		case ')':
-			result = append(result, Token{RIGHT_PARENTHESIS, RIGHT_PARENTHESIS.String(), l.pos})
+			result = append(result, &Token{RIGHT_PARENTHESIS, RIGHT_PARENTHESIS.String(), l.pos})
 			break
 		case ',':
-			result = append(result, Token{COMMA, COMMA.String(), l.pos})
+			result = append(result, &Token{COMMA, COMMA.String(), l.pos})
 			break
 		case ':':
-			result = append(result, Token{LOGIC_START, LOGIC_START.String(), l.pos})
+			result = append(result, &Token{LOGIC_START, LOGIC_START.String(), l.pos})
 			break
 		default:
 			if unicode.IsSpace(r) {
@@ -194,54 +196,67 @@ func (l *Lexer) Lex() [][]Token {
 			} else if unicode.IsDigit(r) {
 				l.backup()
 				lit := l.lexInt()
-				result = append(result, Token{INTEGER, lit, l.pos})
+				result = append(result, &Token{INTEGER, lit, l.pos})
 				break
 			} else if unicode.IsLetter(r) {
 				l.backup()
 				lit, hasPeriod := l.lexStr()
 				if hasPeriod {
-					result = append(result, Token{ATTRIBUTE, lit, l.pos})
+					result = append(result, &Token{ATTRIBUTE, lit, l.pos})
 					break
 				}
 
 				switch lit {
 				case "GET":
-					result = append(result, Token{GET, lit, l.pos})
+					result = append(result, &Token{GET, lit, l.pos})
 					break
 				case "RANGE":
-					result = append(result, Token{RANGE, lit, l.pos})
+					result = append(result, &Token{RANGE, lit, l.pos})
 					break
 				case "HOLD":
-					result = append(result, Token{HOLD, lit, l.pos})
+					result = append(result, &Token{HOLD, lit, l.pos})
 					break
 				case "RELEASE":
-					result = append(result, Token{RELEASE, lit, l.pos})
+					result = append(result, &Token{RELEASE, lit, l.pos})
 					break
 				case "UPDATE":
-					result = append(result, Token{UPDATE, lit, l.pos})
+					result = append(result, &Token{UPDATE, lit, l.pos})
 					break
 				case "DELETE":
-					result = append(result, Token{DELETE, lit, l.pos})
+					result = append(result, &Token{DELETE, lit, l.pos})
 					break
 				case "PUT":
-					result = append(result, Token{PUT, lit, l.pos})
+					result = append(result, &Token{PUT, lit, l.pos})
 					break
 				default:
-					result = append(result, Token{RELATION, lit, l.pos})
+					if len(result) > 1 && result[len(result)-1].Type == EXISTS {
+						result = append(result, &Token{BIND_RELATION, lit, l.pos})
+						for _, tokens := range l.results {
+							for _, token := range tokens {
+								if token.Type == FREE_RELATION && token.Value == lit {
+									token.Type = BIND_RELATION
+									break
+								}
+							}
+						}
+						break
+					}
+
+					result = append(result, &Token{FREE_RELATION, lit, l.pos})
 					break
 				}
 			} else if r == '"' {
 				l.backup()
 				lit, period := l.lexStr()
 				if period {
-					result = append(result, Token{ILLEGAL, lit, l.pos})
+					result = append(result, &Token{ILLEGAL, lit, l.pos})
 					break
 				}
 
-				result = append(result, Token{CONSTANT, lit, l.pos})
+				result = append(result, &Token{CONSTANT, lit, l.pos})
 				break
 			} else {
-				result = append(result, Token{ILLEGAL, string(r), l.pos})
+				result = append(result, &Token{ILLEGAL, string(r), l.pos})
 				break
 			}
 		}

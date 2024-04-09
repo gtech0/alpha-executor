@@ -8,24 +8,24 @@ import (
 )
 
 type Parser struct {
-	tokens []model.Token
+	tokens []*model.Token
 }
 
-func NewParser(tokens []model.Token) *Parser {
+func NewParser(tokens []*model.Token) *Parser {
 	return &Parser{tokens: tokens}
 }
 
 func (p *Parser) next() model.Token {
 	prev := p.tokens[0]
 	p.tokens = p.tokens[1:]
-	return prev
+	return *prev
 }
 
 func (p *Parser) peek() model.Token {
 	if len(p.tokens) == 0 {
 		return model.Token{}
 	}
-	return p.tokens[0]
+	return *p.tokens[0]
 }
 
 func (p *Parser) expect(lexType model.LexType) model.Token {
@@ -127,7 +127,7 @@ func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
 	position := p.peek().Position
 	switch parsedType {
-	case model.ATTRIBUTE, model.RELATION, model.CONSTANT, model.INTEGER:
+	case model.ATTRIBUTE, model.FREE_RELATION, model.BIND_RELATION, model.CONSTANT, model.INTEGER:
 		token := p.next()
 		return &IdentifierExpression{parsedType.String(), token.Value, token.Position}
 	case model.EXISTS, model.FOR_ALL, model.NEGATION:

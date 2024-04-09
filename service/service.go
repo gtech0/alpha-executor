@@ -28,11 +28,14 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 	}
 
 	e.testingRepository.Clear()
-	e.testingRepository.AddRelations(receiver.Relations)
+	e.testingRepository.AddFreeRelations(receiver.Relations)
 
 	reader := strings.NewReader(receiver.Query)
 	program := operation.GenerateAST(bufio.NewReader(reader))
-	pretty.Print(program)
+	if _, err := pretty.Print(program); err != nil {
+		return model.TestingSender{}, err
+	}
+
 	interpreter := operation.NewInterpreter(e.testingRepository)
 	err := interpreter.Evaluate(&program)
 	if err != nil {
