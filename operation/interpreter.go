@@ -5,6 +5,7 @@ import (
 	"alpha-executor/model"
 	"alpha-executor/repository"
 	"fmt"
+	"github.com/kr/pretty"
 	"log"
 	"slices"
 )
@@ -91,7 +92,7 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 
 func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error) {
 	relationName := expression.left.(*IdentifierExpression).value
-	left, err := i.repository.GetFreeRelation(relationName)
+	left, err := i.repository.GetRelation(relationName)
 	if err != nil {
 		return false, err
 	}
@@ -114,7 +115,7 @@ func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error)
 
 func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error) {
 	relationName := expression.left.(*IdentifierExpression).value
-	left, err := i.repository.GetFreeRelation(relationName)
+	left, err := i.repository.GetRelation(relationName)
 	if err != nil {
 		return false, err
 	}
@@ -146,19 +147,25 @@ func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error)
 		}
 	}
 */
-func (i *Interpreter) evaluateFreeRelation(relations []string, expression Expression) (bool, error) {
-	relationName := relations[0]
-	relations = relations[1:]
-	relation, err := i.repository.GetFreeRelation(relationName)
+func (i *Interpreter) evaluateFreeRelation(
+	relations *[]string,
+	expression Expression,
+	resultRelations *entity.Relations,
+) (bool, error) {
+	relationName := (*relations)[0]
+	*relations = (*relations)[1:]
+	relation, err := i.repository.GetRelation(relationName)
 	if err != nil {
 		return false, err
 	}
 
 	result := false
+	newRelation := make(entity.Relation)
 	for row := range *relation {
-		i.repository.AddRow(relationName, row)
-		if len(relations) > 0 {
-			result, err = i.evaluateFreeRelation(relations, expression)
+		rowCopy := *row
+		i.repository.AddRow(relationName, &rowCopy)
+		if len(*relations) > 0 {
+			result, err = i.evaluateFreeRelation(relations, expression, resultRelations)
 			if err != nil {
 				return false, err
 			}
@@ -167,9 +174,14 @@ func (i *Interpreter) evaluateFreeRelation(relations []string, expression Expres
 			if err != nil {
 				return false, err
 			}
+
+			if result {
+				newRelation[row] = struct{}{}
+			}
 		}
 	}
 
+	(*resultRelations)[relationName] = &newRelation
 	return result, nil
 }
 
@@ -222,9 +234,16 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		}
 	}
 
-	result, err := i.evaluateFreeRelation(relations, expression.expression)
+	resultRelations := make(entity.Relations)
+	relationsCopy := relations
+	result, err := i.evaluateFreeRelation(&relationsCopy, expression.expression, &resultRelations)
 	if err != nil {
 		err.(*entity.CustomError).Position = expression.position
+		return false, err
+	}
+
+	i.repository.AddCalculatedRelations(resultRelations)
+	if _, err = pretty.Print(resultRelations); err != nil {
 		return false, err
 	}
 
@@ -243,7 +262,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 
 		i.repository.AddResult(projected)
 	} else if isRelation && result {
-		final, err := i.repository.GetFreeRelation(relations[0])
+		final, err := i.repository.GetRelation(relations[0])
 		if err != nil {
 			return false, err
 		}
@@ -257,7 +276,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, error) {
 	join := Join{}
 	for _, rel := range relations {
-		rel1, err := i.repository.GetFreeRelation(rel)
+		rel1, err := i.repository.GetCalculatedRelation(rel)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +284,7 @@ func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, er
 		rel1Pair := entity.Pair[string, *entity.Relation]{Left: rel, Right: rel1}
 		relations = relations[1:]
 		for _, rel := range relations {
-			rel2, err := i.repository.GetFreeRelation(rel)
+			rel2, err := i.repository.GetCalculatedRelation(rel)
 			if err != nil {
 				return nil, err
 			}
@@ -295,7 +314,7 @@ func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, er
 				log.Fatal(err)
 			}
 		}
-		return rel1, nil
+		return rel1Pair.Right, nil
 	}
 
 	return nil, &entity.CustomError{
@@ -311,12 +330,12 @@ func (i *Interpreter) evaluateComparison(expression *BinaryExpression) (bool, er
 }
 
 func (i *Interpreter) evaluateRange(expression *RangeExpression) (bool, error) {
-	relation, err := i.repository.GetFreeRelation(expression.relation.(*IdentifierExpression).value)
+	relation, err := i.repository.GetRelation(expression.relation.(*IdentifierExpression).value)
 	if err != nil {
 		return false, err
 	}
 
-	i.repository.AddFreeRelation(expression.variable.(*IdentifierExpression).value, relation)
+	i.repository.AddRelation(expression.variable.(*IdentifierExpression).value, relation)
 	return true, nil
 }
 

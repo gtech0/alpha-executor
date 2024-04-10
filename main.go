@@ -34,7 +34,7 @@ func main() {
 		}
 	}()
 
-	testingRepository := repository.NewTestingRepository(make(entity.RowsMap), make(entity.Relations), make(entity.Relation))
+	testingRepository := repository.NewTestingRepository(make(entity.RowsMap), make(entity.Relations), make(entity.Relations), make(entity.Relation))
 	executorService := service.NewExecutorService(testingRepository)
 	requestController := controller.NewRequestController(executorService)
 

@@ -6,31 +6,28 @@ import (
 )
 
 type TestingRepository struct {
-	rows          entity.RowsMap
-	freeRelations entity.Relations
-	result        entity.Relation
+	rows                entity.RowsMap
+	relations           entity.Relations
+	calculatedRelations entity.Relations
+	result              entity.Relation
 }
 
 func NewTestingRepository(
 	rows entity.RowsMap,
-	freeRelations entity.Relations,
+	relations entity.Relations,
+	calculatedRelations entity.Relations,
 	result entity.Relation,
 ) *TestingRepository {
 	return &TestingRepository{
-		rows:          rows,
-		freeRelations: freeRelations,
-		result:        result,
+		rows:                rows,
+		relations:           relations,
+		calculatedRelations: calculatedRelations,
+		result:              result,
 	}
 }
 
 func (t *TestingRepository) AddRow(name string, row *entity.RowMap) {
 	t.rows[name] = row
-}
-
-func (t *TestingRepository) AddRows(rows entity.RowsMap) {
-	for name, row := range rows {
-		t.rows[name] = row
-	}
 }
 
 func (t *TestingRepository) GetRow(name string) (*entity.RowMap, error) {
@@ -45,18 +42,40 @@ func (t *TestingRepository) GetRow(name string) (*entity.RowMap, error) {
 	}
 }
 
-func (t *TestingRepository) AddFreeRelation(name string, relation *entity.Relation) {
-	t.freeRelations[name] = relation
+func (t *TestingRepository) AddRelation(name string, relation *entity.Relation) {
+	t.relations[name] = relation
 }
 
-func (t *TestingRepository) AddFreeRelations(relations entity.Relations) {
+func (t *TestingRepository) AddRelations(relations entity.Relations) {
 	for name, relation := range relations {
-		t.freeRelations[name] = relation
+		t.relations[name] = relation
 	}
 }
 
-func (t *TestingRepository) GetFreeRelation(name string) (*entity.Relation, error) {
-	result := t.freeRelations[name]
+func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
+	result := t.relations[name]
+	if result != nil {
+		return result, nil
+	}
+
+	return nil, &entity.CustomError{
+		ErrorType: entity.ResponseTypes["CE"],
+		Message:   fmt.Sprintf("relation %s is null", name),
+	}
+}
+
+func (t *TestingRepository) AddCalculatedRelation(name string, relation *entity.Relation) {
+	t.calculatedRelations[name] = relation
+}
+
+func (t *TestingRepository) AddCalculatedRelations(relations entity.Relations) {
+	for name, relation := range relations {
+		t.calculatedRelations[name] = relation
+	}
+}
+
+func (t *TestingRepository) GetCalculatedRelation(name string) (*entity.Relation, error) {
+	result := t.calculatedRelations[name]
 	if result != nil {
 		return result, nil
 	}
@@ -85,6 +104,6 @@ func (t *TestingRepository) GetResult() (*entity.Relation, error) {
 
 func (t *TestingRepository) Clear() {
 	clear(t.rows)
-	clear(t.freeRelations)
+	clear(t.relations)
 	clear(t.result)
 }

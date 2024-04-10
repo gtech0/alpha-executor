@@ -28,7 +28,7 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 	}
 
 	e.testingRepository.Clear()
-	e.testingRepository.AddFreeRelations(receiver.Relations)
+	e.testingRepository.AddRelations(receiver.Relations)
 
 	reader := strings.NewReader(receiver.Query)
 	program := operation.GenerateAST(bufio.NewReader(reader))
