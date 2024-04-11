@@ -1,5 +1,5 @@
 {
-  "query": "RANGE R1 X;\nRANGE R2 Y;\nRANGE R2 Z;\nGET W (R1.name, R2.phone):\n∃X (∃Y (Y.phone = 999 ∧ Y.name = X.name));",
+  "query": "RANGE R1 X;\nRANGE R2 Y;\nGET W (R1.name, R2.phone):\n∃X (∃Y (Y.phone = 999 ∧ R1.name = X.name));",
   "relations": {
     "R1": [
       {

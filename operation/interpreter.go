@@ -82,58 +82,14 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 		return i.evaluateExists(expression.(*BinaryExpression))
 	case model.FOR_ALL.String():
 		return i.evaluateForAll(expression.(*BinaryExpression))
+	case model.NEGATION.String():
+		return i.evaluateNegation(expression.(*UnaryExpression))
 	default:
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
 			Message:   fmt.Sprintf("Unknown kind %s", expression.GetKind()),
 		}
 	}
-}
-
-func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error) {
-	relationName := expression.left.(*IdentifierExpression).value
-	left, err := i.repository.GetRelation(relationName)
-	if err != nil {
-		return false, err
-	}
-
-	for row := range *left {
-		i.repository.AddRow(relationName, row)
-
-		right, err := i.evaluateExpression(expression.right)
-		if err != nil {
-			return false, err
-		}
-
-		if right {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error) {
-	relationName := expression.left.(*IdentifierExpression).value
-	left, err := i.repository.GetRelation(relationName)
-	if err != nil {
-		return false, err
-	}
-
-	for row := range *left {
-		i.repository.AddRow(relationName, row)
-
-		right, err := i.evaluateExpression(expression.right)
-		if err != nil {
-			return false, err
-		}
-
-		if !right {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }
 
 /*
@@ -148,41 +104,56 @@ func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error)
 	}
 */
 func (i *Interpreter) evaluateFreeRelation(
-	relations *[]string,
+	relations []string,
 	expression Expression,
 	resultRelations *entity.Relations,
 ) (bool, error) {
-	relationName := (*relations)[0]
-	*relations = (*relations)[1:]
+	relationName := relations[0]
+	relations = relations[1:]
 	relation, err := i.repository.GetRelation(relationName)
 	if err != nil {
 		return false, err
 	}
 
-	result := false
 	newRelation := make(entity.Relation)
 	for row := range *relation {
+		result := false
 		rowCopy := *row
 		i.repository.AddRow(relationName, &rowCopy)
-		if len(*relations) > 0 {
-			result, err = i.evaluateFreeRelation(relations, expression, resultRelations)
-			if err != nil {
-				return false, err
-			}
-		} else {
+
+		if len(relations) == 0 {
 			result, err = i.evaluateExpression(expression)
 			if err != nil {
 				return false, err
 			}
+		}
 
-			if result {
-				newRelation[row] = struct{}{}
+		if len(relations) > 0 {
+			result, err = i.evaluateFreeRelation(relations, expression, resultRelations)
+			if err != nil {
+				return false, err
 			}
+		}
+
+		if result {
+			newRelation[&rowCopy] = struct{}{}
 		}
 	}
 
-	(*resultRelations)[relationName] = &newRelation
-	return result, nil
+	if _, exists := (*resultRelations)[relationName]; exists {
+		currentRelation := (*resultRelations)[relationName]
+		for row := range newRelation {
+			(*currentRelation)[row] = struct{}{}
+		}
+	} else {
+		(*resultRelations)[relationName] = &newRelation
+	}
+
+	if len(newRelation) > 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
@@ -235,8 +206,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 	}
 
 	resultRelations := make(entity.Relations)
-	relationsCopy := relations
-	result, err := i.evaluateFreeRelation(&relationsCopy, expression.expression, &resultRelations)
+	result, err := i.evaluateFreeRelation(relations, expression.expression, &resultRelations)
 	if err != nil {
 		err.(*entity.CustomError).Position = expression.position
 		return false, err
@@ -365,6 +335,61 @@ func (i *Interpreter) evaluateDisjunction(expression *BinaryExpression) (bool, e
 	}
 
 	return left || right, nil
+}
+
+func (i *Interpreter) evaluateExists(expression *BinaryExpression) (bool, error) {
+	relationName := expression.left.(*IdentifierExpression).value
+	left, err := i.repository.GetRelation(relationName)
+	if err != nil {
+		return false, err
+	}
+
+	for row := range *left {
+		i.repository.AddRow(relationName, row)
+
+		right, err := i.evaluateExpression(expression.right)
+		if err != nil {
+			return false, err
+		}
+
+		if right {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (i *Interpreter) evaluateForAll(expression *BinaryExpression) (bool, error) {
+	relationName := expression.left.(*IdentifierExpression).value
+	left, err := i.repository.GetRelation(relationName)
+	if err != nil {
+		return false, err
+	}
+
+	for row := range *left {
+		i.repository.AddRow(relationName, row)
+
+		right, err := i.evaluateExpression(expression.right)
+		if err != nil {
+			return false, err
+		}
+
+		if !right {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (i *Interpreter) evaluateNegation(expression *UnaryExpression) (bool, error) {
+	calculatedExpression, err := i.evaluateExpression(expression.expression)
+	if err != nil {
+		return false, err
+	}
+
+	return !calculatedExpression, nil
 }
 
 //func (i *Interpreter) evaluateHold(expression *HoldExpression) (*entity.Relation, error) {

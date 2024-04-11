@@ -30,6 +30,16 @@ func (b *BinaryExpression) GetKind() string {
 	return b.kind
 }
 
+type UnaryExpression struct {
+	kind       string
+	expression Expression
+	position   entity.Position
+}
+
+func (b *UnaryExpression) GetKind() string {
+	return b.kind
+}
+
 type IdentifierExpression struct {
 	kind     string
 	value    string

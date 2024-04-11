@@ -130,9 +130,12 @@ func (p *Parser) parsePrimary() Expression {
 	case model.ATTRIBUTE, model.FREE_RELATION, model.BIND_RELATION, model.CONSTANT, model.INTEGER:
 		token := p.next()
 		return &IdentifierExpression{parsedType.String(), token.Value, token.Position}
-	case model.EXISTS, model.FOR_ALL, model.NEGATION:
+	case model.EXISTS, model.FOR_ALL:
 		p.next()
 		return &BinaryExpression{parsedType.String(), p.parsePrimary(), p.parseComparison(), position}
+	case model.NEGATION:
+		p.next()
+		return &UnaryExpression{parsedType.String(), p.parseComparison(), position}
 	case model.LEFT_PARENTHESIS:
 		p.next()
 		value := p.ParseExpression()
