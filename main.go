@@ -10,18 +10,6 @@ import (
 	"os"
 )
 
-//func main() {
-//	testingRepository := repository.NewTestingRepository(
-//		make(entity.relations),
-//		make(entity.relations),
-//	)
-//	executorService := service.NewExecutorService(testingRepository)
-//	requestController := controller.NewRequestController(executorService)
-//	requestRouter := router.NewRequestRouter(requestController)
-//
-//	requestRouter.Start()
-//}
-
 func main() {
 	file, err := os.Open("resources/test.json")
 	if err != nil {
@@ -40,18 +28,4 @@ func main() {
 
 	requestRouter := router.NewRouter(requestController)
 	requestRouter.Server()
-
-	//var receiver model.TestingReceiver
-	//err = json.NewDecoder(file).Decode(&receiver)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//reader := strings.NewReader(receiver.Query)
-	//program := service.GenerateAST(bufio.NewReader(reader))
-	//pretty.Print(program)
-	//
-	//testingRepository := repository.NewTestingRepository(receiver.relations, make(entity.relations), make(entity.Relation))
-	//interpreter := service.NewInterpreter(testingRepository)
-	//interpreter.Evaluate(program)
 }

@@ -6,6 +6,7 @@ import (
 	"alpha-executor/repository"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 type Comparison struct {
@@ -146,12 +147,12 @@ func (c *Comparison) valueComparator() (bool, error) {
 		return false, err
 	}
 
-	//date, err := c.dateComparator()
-	//if err != nil {
-	//	return false, err
-	//}
+	date, err := c.dateComparator()
+	if err != nil {
+		return false, err
+	}
 
-	return numeric || str /*|| date*/, nil
+	return numeric || str || date, nil
 }
 
 func (c *Comparison) numericComparator() (bool, error) {
@@ -212,39 +213,35 @@ func (c *Comparison) stringComparator() (bool, error) {
 	}
 }
 
-//func (*Comparison) dateComparator(parameters BinaryExpression) bool {
-//	if entity.IsQuoted(parameters.valLeft) {
-//		parameters.valLeft = removeQuotes(parameters.valLeft)
-//	}
-//
-//	if entity.IsQuoted(parameters.valRight) {
-//		parameters.valRight = removeQuotes(parameters.valRight)
-//	}
-//
-//	oldValDate, err := time.Parse(time.DateTime, parameters.valLeft)
-//	if err != nil {
-//		return false
-//	}
-//
-//	newValDate, err := time.Parse(time.DateTime, parameters.valRight)
-//	if err != nil {
-//		return false
-//	}
-//
-//	switch parameters.operator {
-//	case "=":
-//		return oldValDate.Equal(newValDate)
-//	case "!=":
-//		return !oldValDate.Equal(newValDate)
-//	case "<=":
-//		return oldValDate.Before(newValDate) || oldValDate.Equal(newValDate)
-//	case ">=":
-//		return oldValDate.After(newValDate) || oldValDate.Equal(newValDate)
-//	case "<":
-//		return oldValDate.Before(newValDate)
-//	case ">":
-//		return oldValDate.After(newValDate)
-//	}
-//
-//	return false
-//}
+func (c *Comparison) dateComparator() (bool, error) {
+	oldValDate, err := time.Parse(time.DateTime, c.parameters.left.value)
+	if err != nil {
+		return false, nil
+	}
+
+	newValDate, err := time.Parse(time.DateTime, c.parameters.right.value)
+	if err != nil {
+		return false, nil
+	}
+
+	switch c.parameters.kind {
+	case "=":
+		return oldValDate.Equal(newValDate), nil
+	case "!=":
+		return !oldValDate.Equal(newValDate), nil
+	case "<=":
+		return oldValDate.Before(newValDate) || oldValDate.Equal(newValDate), nil
+	case ">=":
+		return oldValDate.After(newValDate) || oldValDate.Equal(newValDate), nil
+	case "<":
+		return oldValDate.Before(newValDate), nil
+	case ">":
+		return oldValDate.After(newValDate), nil
+	default:
+		return false, &entity.CustomError{
+			ErrorType: entity.ResponseTypes["CE"],
+			Message:   fmt.Sprintf("Unknown operator %s", c.parameters.kind),
+			Position:  c.parameters.position,
+		}
+	}
+}

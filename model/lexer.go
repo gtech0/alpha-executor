@@ -23,6 +23,7 @@ const (
 	ATTRIBUTE
 	CONSTANT
 	INTEGER
+	DATE
 	NULL
 	FREE_RELATION
 	BIND_RELATION
@@ -65,6 +66,7 @@ var tokens = []string{
 	ATTRIBUTE:     "ATTRIBUTE",
 	CONSTANT:      "CONSTANT",
 	INTEGER:       "INTEGER",
+	DATE:          "DATE",
 	NULL:          "NULL",
 	FREE_RELATION: "FREE_RELATION",
 	BIND_RELATION: "BIND_RELATION",
@@ -200,9 +202,12 @@ func (l *Lexer) Lex() [][]*Token {
 				break
 			} else if unicode.IsLetter(r) {
 				l.backup()
-				lit, hasPeriod := l.lexStr()
-				if hasPeriod {
+				lit, dot, dash := l.lexStr()
+				if dot == 1 && dash == 0 {
 					result = append(result, &Token{ATTRIBUTE, lit, l.pos})
+					break
+				} else if dot > 1 || dash != 0 {
+					result = append(result, &Token{ILLEGAL, lit, l.pos})
 					break
 				}
 
@@ -247,9 +252,14 @@ func (l *Lexer) Lex() [][]*Token {
 				}
 			} else if r == '"' {
 				l.backup()
-				lit, period := l.lexStr()
-				if period {
+				lit, dot, dash := l.lexStr()
+				if dot > 0 || (dash > 0 && dash != 2) {
 					result = append(result, &Token{ILLEGAL, lit, l.pos})
+					break
+				}
+
+				if dash == 2 {
+					result = append(result, &Token{DATE, lit, l.pos})
 					break
 				}
 
@@ -277,12 +287,11 @@ func (l *Lexer) backup() {
 }
 
 func (l *Lexer) lexInt() string {
-	var lit string
+	lit := ""
 	for {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
 			if err == io.EOF {
-				// at the end of the int
 				return lit
 			}
 		}
@@ -297,21 +306,23 @@ func (l *Lexer) lexInt() string {
 	}
 }
 
-func (l *Lexer) lexStr() (string, bool) {
+func (l *Lexer) lexStr() (string, int, int) {
 	lit := ""
-	quoteCount := 0
 	special := []rune{'.', '-', '/', '\\'}
-	period := false
+
+	quote := 0
+	dot := 0
+	dash := 0
 
 	for {
-		if quoteCount == 2 {
-			return lit, period
+		if quote == 2 {
+			return lit, dot, dash
 		}
 
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
 			if err == io.EOF {
-				return lit, period
+				return lit, dot, dash
 			}
 		}
 
@@ -319,13 +330,17 @@ func (l *Lexer) lexStr() (string, bool) {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) || slices.Contains(special, r) {
 			lit = lit + string(r)
 			if r == '.' {
-				period = true
+				dot += 1
+			}
+
+			if r == '-' {
+				dash += 1
 			}
 		} else if r == '"' {
-			quoteCount++
+			quote++
 		} else {
 			l.backup()
-			return lit, period
+			return lit, dot, dash
 		}
 	}
 

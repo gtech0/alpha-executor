@@ -16,6 +16,10 @@ func NewParser(tokens []*model.Token) *Parser {
 }
 
 func (p *Parser) next() model.Token {
+	if len(p.tokens) == 0 {
+		panic("No tokens in parser")
+	}
+
 	prev := p.tokens[0]
 	p.tokens = p.tokens[1:]
 	return *prev
@@ -31,7 +35,7 @@ func (p *Parser) peek() model.Token {
 func (p *Parser) expect(lexType model.LexType) model.Token {
 	prev := p.next()
 	if prev.Type == model.EOF || prev.Type != lexType {
-		log.Fatal(fmt.Sprintf("Unexpected token type %s", lexType.String()))
+		panic(fmt.Sprintf("Unexpected token type %s", lexType.String()))
 	}
 
 	return prev
@@ -127,7 +131,7 @@ func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
 	position := p.peek().Position
 	switch parsedType {
-	case model.ATTRIBUTE, model.FREE_RELATION, model.BIND_RELATION, model.CONSTANT, model.INTEGER:
+	case model.ATTRIBUTE, model.FREE_RELATION, model.BIND_RELATION, model.CONSTANT, model.INTEGER, model.DATE:
 		token := p.next()
 		return &IdentifierExpression{parsedType.String(), token.Value, token.Position}
 	case model.EXISTS, model.FOR_ALL:
