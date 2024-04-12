@@ -156,29 +156,29 @@ func (c *Comparison) valueComparator() (bool, error) {
 }
 
 func (c *Comparison) numericComparator() (bool, error) {
-	oldValNum, err := strconv.ParseFloat(c.parameters.left.value, 10)
+	oldVal, err := strconv.ParseFloat(c.parameters.left.value, 10)
 	if err != nil {
 		return false, nil
 	}
 
-	newValNum, err := strconv.ParseFloat(c.parameters.right.value, 10)
+	newVal, err := strconv.ParseFloat(c.parameters.right.value, 10)
 	if err != nil {
 		return false, nil
 	}
 
 	switch c.parameters.kind {
 	case "=":
-		return oldValNum == newValNum, nil
+		return oldVal == newVal, nil
 	case "≠":
-		return oldValNum != newValNum, nil
+		return oldVal != newVal, nil
 	case "≤":
-		return oldValNum <= newValNum, nil
+		return oldVal <= newVal, nil
 	case "≥":
-		return oldValNum >= newValNum, nil
+		return oldVal >= newVal, nil
 	case "<":
-		return oldValNum < newValNum, nil
+		return oldVal < newVal, nil
 	case ">":
-		return oldValNum > newValNum, nil
+		return oldVal > newVal, nil
 	default:
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["CE"],
@@ -214,29 +214,29 @@ func (c *Comparison) stringComparator() (bool, error) {
 }
 
 func (c *Comparison) dateComparator() (bool, error) {
-	oldValDate, err := time.Parse(time.DateTime, c.parameters.left.value)
+	oldVal, err := time.Parse(time.DateTime, c.parameters.left.value)
 	if err != nil {
 		return false, nil
 	}
 
-	newValDate, err := time.Parse(time.DateTime, c.parameters.right.value)
+	newVal, err := time.Parse(time.DateTime, c.parameters.right.value)
 	if err != nil {
 		return false, nil
 	}
 
 	switch c.parameters.kind {
 	case "=":
-		return oldValDate.Equal(newValDate), nil
+		return oldVal.Equal(newVal), nil
 	case "!=":
-		return !oldValDate.Equal(newValDate), nil
+		return !oldVal.Equal(newVal), nil
 	case "<=":
-		return oldValDate.Before(newValDate) || oldValDate.Equal(newValDate), nil
+		return oldVal.Before(newVal) || oldVal.Equal(newVal), nil
 	case ">=":
-		return oldValDate.After(newValDate) || oldValDate.Equal(newValDate), nil
+		return oldVal.After(newVal) || oldVal.Equal(newVal), nil
 	case "<":
-		return oldValDate.Before(newValDate), nil
+		return oldVal.Before(newVal), nil
 	case ">":
-		return oldValDate.After(newValDate), nil
+		return oldVal.After(newVal), nil
 	default:
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["CE"],

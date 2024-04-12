@@ -8,6 +8,7 @@ import (
 	"github.com/kr/pretty"
 	"log"
 	"slices"
+	"strconv"
 )
 
 type Interpreter struct {
@@ -206,7 +207,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 	}
 
 	resultRelations := make(entity.Relations)
-	result, err := i.evaluateFreeRelation(relations, expression.expression, &resultRelations)
+	evaluationResult, err := i.evaluateFreeRelation(relations, expression.expression, &resultRelations)
 	if err != nil {
 		err.(*entity.CustomError).Position = expression.position
 		return false, err
@@ -217,7 +218,8 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		return false, err
 	}
 
-	if !isRelation && result {
+	var result *entity.Relation
+	if !isRelation && evaluationResult {
 		rel, err := i.joiningRelations(relations)
 		if err != nil {
 			return false, err
@@ -225,21 +227,41 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 
 		projection := Projection{}
 		relationPair := entity.Pair[string, *entity.Relation]{Left: relation.value, Right: rel}
-		projected, err := projection.Execute(relationPair, attributes, relation.position)
+		result, err = projection.Execute(relationPair, attributes, relation.position)
 		if err != nil {
 			return false, err
 		}
-
-		i.repository.AddResult(projected)
-	} else if isRelation && result {
-		final, err := i.repository.GetRelation(relations[0])
+	} else if isRelation && evaluationResult {
+		result, err = i.repository.GetRelation(relations[0])
 		if err != nil {
 			return false, err
 		}
-
-		i.repository.AddResult(final)
 	}
 
+	resultRowNum := expression.rows.(*IdentifierExpression).value
+	resultSliced := make(entity.Relation)
+	if resultRowNum != model.NULL.String() {
+		rowNum, err := strconv.Atoi(resultRowNum)
+		if err != nil {
+			return false, err
+		}
+
+		if rowNum < len(*result) {
+			count := 0
+			for row := range *result {
+				if count >= rowNum {
+					break
+				}
+
+				(resultSliced)[row] = struct{}{}
+				count++
+			}
+
+			result = &resultSliced
+		}
+	}
+
+	i.repository.AddResult(result)
 	return true, nil
 }
 
