@@ -93,17 +93,6 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 	}
 }
 
-/*
-	func relationIterator {
-		iterate through a list of relation names {
-			get relation
-			remove relation name from list
-			iterate through relation {
-
-			}
-		}
-	}
-*/
 func (i *Interpreter) evaluateFreeRelation(
 	relations []string,
 	expression Expression,
@@ -152,9 +141,9 @@ func (i *Interpreter) evaluateFreeRelation(
 
 	if len(newRelation) > 0 {
 		return true, nil
-	} else {
-		return false, nil
 	}
+
+	return false, nil
 }
 
 func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
@@ -236,6 +225,12 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+	} else {
+		return false, &entity.CustomError{
+			ErrorType: entity.ResponseTypes["RT"],
+			Message:   "Unable to calculate result relation or result is empty",
+			Position:  expression.position,
+		}
 	}
 
 	resultRowNum := expression.rows.(*IdentifierExpression).value
@@ -253,7 +248,7 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 					break
 				}
 
-				(resultSliced)[row] = struct{}{}
+				resultSliced[row] = struct{}{}
 				count++
 			}
 
@@ -261,6 +256,24 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		}
 	}
 
+	sort := expression.sort.(*UnaryExpression)
+	if sort.kind != model.NULL.String() {
+		switch sort.kind {
+		//TODO: implement sort functions
+		case model.UP.String():
+			i.evaluateUpSort(sort)
+		case model.DOWN.String():
+			i.evaluateDownSort(sort)
+		default:
+			return false, &entity.CustomError{
+				ErrorType: entity.ResponseTypes["CE"],
+				Message:   "Such sort type is undefined",
+				Position:  relation.position,
+			}
+		}
+	}
+
+	//i.repository.AddCalculatedRelation(relation.value, result)
 	i.repository.AddResult(result)
 	return true, nil
 }
@@ -414,6 +427,10 @@ func (i *Interpreter) evaluateNegation(expression *UnaryExpression) (bool, error
 	return !calculatedExpression, nil
 }
 
-//func (i *Interpreter) evaluateHold(expression *HoldExpression) (*entity.Relation, error) {
-//
-//}
+func (i *Interpreter) evaluateUpSort(expression *UnaryExpression) (bool, error) {
+	return true, nil
+}
+
+func (i *Interpreter) evaluateDownSort(expression *UnaryExpression) (bool, error) {
+	return true, nil
+}

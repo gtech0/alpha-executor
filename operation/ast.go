@@ -56,6 +56,7 @@ type GetExpression struct {
 	rows       Expression
 	relations  []Expression
 	expression Expression
+	sort       Expression
 	position   entity.Position
 }
 
@@ -115,7 +116,7 @@ func GenerateAST(reader *bufio.Reader) Program {
 	for _, query := range output {
 		if len(query) > 0 {
 			parser := NewParser(query)
-			program.body = append(program.body, parser.ParseExpression())
+			program.body = append(program.body, parser.ParseFullExpression())
 		}
 	}
 

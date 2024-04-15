@@ -1,6 +1,7 @@
 package operation
 
 import (
+	"alpha-executor/entity"
 	"alpha-executor/model"
 	"fmt"
 	"log"
@@ -41,7 +42,11 @@ func (p *Parser) expect(lexType model.LexType) model.Token {
 	return prev
 }
 
-func (p *Parser) ParseExpression() Expression {
+func (p *Parser) ParseFullExpression() Expression {
+	return p.parseExpression()
+}
+
+func (p *Parser) parseExpression() Expression {
 	switch p.peek().Type {
 	case model.GET, model.RANGE, model.HOLD, model.RELEASE, model.UPDATE, model.DELETE, model.PUT:
 		return p.parsePrimary()
@@ -129,6 +134,7 @@ func (p *Parser) parseComparison() Expression {
 
 func (p *Parser) parsePrimary() Expression {
 	parsedType := p.peek().Type
+	parsedValue := p.peek().Value
 	position := p.peek().Position
 	switch parsedType {
 	case model.ATTRIBUTE, model.FREE_RELATION, model.BIND_RELATION, model.CONSTANT, model.INTEGER, model.DATE:
@@ -142,14 +148,17 @@ func (p *Parser) parsePrimary() Expression {
 		return &UnaryExpression{parsedType.String(), p.parseComparison(), position}
 	case model.LEFT_PARENTHESIS:
 		p.next()
-		value := p.ParseExpression()
+		value := p.parseExpression()
 		p.expect(model.RIGHT_PARENTHESIS)
 		return value
 	case model.GET:
 		p.next()
 		variable := p.parsePrimary()
 		rows, relations := p.parseRowNumAndRelation()
-		return &GetExpression{parsedType.String(), variable, rows, relations, p.ParseExpression(), position}
+		expression := p.parseExpression()
+		sort := p.parseSort()
+		return &GetExpression{parsedType.String(), variable, rows, relations,
+			expression, sort, position}
 	case model.COMMA:
 		p.next()
 		return p.parsePrimary()
@@ -160,7 +169,8 @@ func (p *Parser) parsePrimary() Expression {
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
-		return &HoldExpression{parsedType.String(), variable, relations, p.ParseExpression(), position}
+		return &HoldExpression{parsedType.String(), variable, relations,
+			p.parseExpression(), position}
 	case model.RELEASE, model.UPDATE, model.DELETE:
 		p.next()
 		return &OperationExpression{parsedType.String(), p.parsePrimary(), position}
@@ -171,9 +181,12 @@ func (p *Parser) parsePrimary() Expression {
 		return &PutExpression{parsedType.String(), variable, relations, position}
 	case model.LOGIC_START:
 		p.next()
-		return p.ParseExpression()
+		return p.parseExpression()
+	case model.DOWN, model.UP:
+		p.next()
+		return &UnaryExpression{parsedType.String(), p.parsePrimary(), position}
 	default:
-		panic(fmt.Sprintf("Unhandled default case %s", parsedType.String()))
+		panic(fmt.Sprintf("Unhandled type %s with value %s", parsedType.String(), parsedValue))
 	}
 }
 
@@ -201,4 +214,16 @@ func (p *Parser) parseRelations() []Expression {
 	}
 	p.expect(model.RIGHT_PARENTHESIS)
 	return relations
+}
+
+func (p *Parser) parseSort() Expression {
+	if len(p.tokens) == 0 {
+		return &UnaryExpression{
+			kind:       model.NULL.String(),
+			expression: nil,
+			position:   entity.Position{},
+		}
+	}
+
+	return p.parsePrimary()
 }

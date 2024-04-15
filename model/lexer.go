@@ -36,6 +36,9 @@ const (
 	DELETE
 	PUT
 
+	DOWN
+	UP
+
 	EQUALS
 	NOT_EQUALS
 	LESS_THAN
@@ -78,6 +81,9 @@ var tokens = []string{
 	UPDATE:  "UPDATE",
 	DELETE:  "DELETE",
 	PUT:     "PUT",
+
+	DOWN: "DOWN",
+	UP:   "UP",
 
 	EQUALS:              "=",
 	NOT_EQUALS:          "≠",
@@ -206,7 +212,7 @@ func (l *Lexer) Lex() [][]*Token {
 				if dot == 1 && dash == 0 {
 					result = append(result, &Token{ATTRIBUTE, lit, l.pos})
 					break
-				} else if dot > 1 || dash != 0 {
+				} else if dot > 1 && dash != 0 {
 					result = append(result, &Token{ILLEGAL, lit, l.pos})
 					break
 				}
@@ -232,6 +238,12 @@ func (l *Lexer) Lex() [][]*Token {
 					break
 				case "PUT":
 					result = append(result, &Token{PUT, lit, l.pos})
+					break
+				case "DOWN":
+					result = append(result, &Token{DOWN, lit, l.pos})
+					break
+				case "UP":
+					result = append(result, &Token{UP, lit, l.pos})
 					break
 				default:
 					if len(result) > 1 && result[len(result)-1].Type == EXISTS {
