@@ -8,6 +8,7 @@ import (
 	"github.com/kr/pretty"
 	"log"
 	"slices"
+	"sort"
 	"strconv"
 )
 
@@ -203,13 +204,21 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 	}
 
 	i.repository.AddCalculatedRelations(resultRelations)
-	if _, err = pretty.Print(resultRelations); err != nil {
-		return false, err
-	}
+	//if _, err = pretty.Print(resultRelations); err != nil {
+	//	return false, err
+	//}
+
+	sortExpression := expression.sort.(*UnaryExpression)
+	sorted := make([]*entity.RowMap, 0)
 
 	var result *entity.Relation
 	if !isRelation && evaluationResult {
 		rel, err := i.joiningRelations(relations)
+		if err != nil {
+			return false, err
+		}
+
+		sorted, err = i.evaluateSort(sortExpression, rel)
 		if err != nil {
 			return false, err
 		}
@@ -225,12 +234,21 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+		sorted, err = i.evaluateSort(sortExpression, result)
+		if err != nil {
+			return false, err
+		}
 	} else {
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
 			Message:   "Unable to calculate result relation or result is empty",
 			Position:  expression.position,
 		}
+	}
+
+	if _, err = pretty.Print(sorted); err != nil {
+		return false, err
 	}
 
 	resultRowNum := expression.rows.(*IdentifierExpression).value
@@ -253,23 +271,6 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 			}
 
 			result = &resultSliced
-		}
-	}
-
-	sort := expression.sort.(*UnaryExpression)
-	if sort.kind != model.NULL.String() {
-		switch sort.kind {
-		//TODO: implement sort functions
-		case model.UP.String():
-			i.evaluateUpSort(sort)
-		case model.DOWN.String():
-			i.evaluateDownSort(sort)
-		default:
-			return false, &entity.CustomError{
-				ErrorType: entity.ResponseTypes["CE"],
-				Message:   "Such sort type is undefined",
-				Position:  relation.position,
-			}
 		}
 	}
 
@@ -427,10 +428,62 @@ func (i *Interpreter) evaluateNegation(expression *UnaryExpression) (bool, error
 	return !calculatedExpression, nil
 }
 
-func (i *Interpreter) evaluateUpSort(expression *UnaryExpression) (bool, error) {
-	return true, nil
-}
+func (i *Interpreter) evaluateSort(expression *UnaryExpression, relation *entity.Relation) ([]*entity.RowMap, error) {
+	if expression.kind == model.NULL.String() {
+		return nil, nil
+	}
 
-func (i *Interpreter) evaluateDownSort(expression *UnaryExpression) (bool, error) {
-	return true, nil
+	if expression.kind != model.UP.String() && expression.kind != model.DOWN.String() {
+		return nil, &entity.CustomError{
+			ErrorType: entity.ResponseTypes["CE"],
+			Message:   "Such sort type is undefined",
+		}
+	}
+
+	attr := model.Attribute{}
+	complexAttribute, err := attr.ExtractAttribute(expression.expression.(*IdentifierExpression).value, entity.Position{})
+	if err != nil {
+		return nil, err
+	}
+
+	attribute := complexAttribute.Attribute
+	for row := range *relation {
+		if _, exists := (*row)[attribute]; !exists {
+			return nil, &entity.CustomError{
+				ErrorType: entity.ResponseTypes["CE"],
+				Message:   fmt.Sprintf("Attribute %s doesn't exist", attribute),
+			}
+		}
+	}
+
+	relationSlice := make([]*entity.RowMap, 0, len(*relation))
+	for row := range *relation {
+		relationSlice = append(relationSlice, row)
+	}
+
+	sort.Slice(relationSlice, func(i, j int) bool {
+		values1, values2 := (*relationSlice[i])[attribute], (*relationSlice[j])[attribute]
+		for _, value1 := range values1 {
+			for _, value2 := range values2 {
+				switch expression.kind {
+				case model.UP.String():
+					if value1 > value2 {
+						return true
+					} else {
+						return false
+					}
+				case model.DOWN.String():
+					if value1 < value2 {
+						return true
+					} else {
+						return false
+					}
+				}
+			}
+		}
+
+		return false
+	})
+
+	return relationSlice, nil
 }
