@@ -53,14 +53,6 @@ func (*Attribute) ExtractAttribute(attribute string, position entity.Position) (
 		}
 	}
 
-	if entity.IsQuoted(attribute) {
-		return ComplexAttribute{}, &entity.CustomError{
-			ErrorType: entity.ResponseTypes["CE"],
-			Message:   "numeric attribute mustn't is quoted",
-			Position:  position,
-		}
-	}
-
 	if _, err := strconv.ParseFloat(attribute, 10); err == nil {
 		return ComplexAttribute{}, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["CE"],

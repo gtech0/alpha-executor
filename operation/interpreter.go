@@ -36,7 +36,7 @@ func (i *Interpreter) Evaluate(expression Expression) error {
 			Position:  entity.Position{},
 		}
 	}
-	//pretty.Print(i.repository.relations)
+	pretty.Print(i.repository.GetAllRelations())
 	return nil
 }
 
@@ -44,7 +44,6 @@ func (i *Interpreter) evaluateProgram(program *Program) error {
 	//var last *entity.Relation
 
 	for _, expression := range program.body {
-		//var err error
 		_, err := i.evaluateExpression(expression)
 		if err != nil {
 			return err
@@ -86,6 +85,8 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 		return i.evaluateForAll(expression.(*BinaryExpression))
 	case model.NEGATION.String():
 		return i.evaluateNegation(expression.(*UnaryExpression))
+	case model.ASSIGN.String():
+		return i.evaluateAssignment(expression.(*BinaryExpression))
 	default:
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
@@ -157,43 +158,9 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		}
 	}
 
-	relations := make([]string, 0)
-	attributes := make([]string, 0)
-	isRelation := false
-	for _, data := range expression.relations {
-		switch data.GetKind() {
-		case model.FREE_RELATION.String():
-			isRelation = true
-			relations = append(relations, data.(*IdentifierExpression).value)
-			break
-		case model.ATTRIBUTE.String():
-			attr := model.Attribute{}
-			assertedData := data.(*IdentifierExpression)
-			attribute, err := attr.ExtractAttribute(assertedData.value, assertedData.position)
-			if err != nil {
-				err.(*entity.CustomError).Position = data.(*IdentifierExpression).position
-				return false, err
-			}
-
-			if !slices.Contains(relations, attribute.Relation) {
-				relations = append(relations, attribute.Relation)
-			}
-
-			if !slices.Contains(relations, attribute.Attribute) {
-				attributes = append(attributes, attribute.Attribute)
-			}
-			break
-		default:
-			return false, &entity.CustomError{
-				ErrorType: entity.ResponseTypes["CE"],
-				Message:   "Unexpected type",
-				Position:  relation.position,
-			}
-		}
-
-		if isRelation {
-			break
-		}
+	relations, attributes, isRelation, err := i.getData(expression, relation)
+	if err != nil {
+		return false, err
 	}
 
 	resultRelations := make(entity.Relations)
@@ -252,50 +219,75 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 	}
 
 	resultRowNum := expression.rows.(*IdentifierExpression).value
-	resultSliced := make(entity.Relation)
-	if resultRowNum != model.NULL.String() {
-		rowNum, err := strconv.Atoi(resultRowNum)
-		if err != nil {
-			return false, err
-		}
-
-		if rowNum < len(*result) {
-			count := 0
-			for row := range *result {
-				if count >= rowNum {
-					break
-				}
-
-				resultSliced[row] = struct{}{}
-				count++
-			}
-
-			result = &resultSliced
-		}
+	if err = i.limitResultRows(result, resultRowNum); err != nil {
+		return false, err
 	}
 
-	//i.repository.AddCalculatedRelation(relation.value, result)
+	i.repository.AddRelation(relation.value, result)
 	i.repository.AddResult(result)
 	return true, nil
 }
 
+func (i *Interpreter) getData(expression *GetExpression, relation *IdentifierExpression) ([]string, []string, bool, error) {
+	relations := make([]string, 0)
+	attributes := make([]string, 0)
+	isRelation := false
+	for _, data := range expression.relations {
+		switch data.GetKind() {
+		case model.FREE_RELATION.String():
+			isRelation = true
+			relations = append(relations, data.(*IdentifierExpression).value)
+			break
+		case model.ATTRIBUTE.String():
+			attr := model.Attribute{}
+			assertedData := data.(*IdentifierExpression)
+			attribute, err := attr.ExtractAttribute(assertedData.value, assertedData.position)
+			if err != nil {
+				err.(*entity.CustomError).Position = data.(*IdentifierExpression).position
+				return nil, nil, false, err
+			}
+
+			if !slices.Contains(relations, attribute.Relation) {
+				relations = append(relations, attribute.Relation)
+			}
+
+			if !slices.Contains(relations, attribute.Attribute) {
+				attributes = append(attributes, attribute.Attribute)
+			}
+			break
+		default:
+			return nil, nil, false, &entity.CustomError{
+				ErrorType: entity.ResponseTypes["CE"],
+				Message:   "Unexpected type",
+				Position:  relation.position,
+			}
+		}
+
+		if isRelation {
+			break
+		}
+	}
+
+	return relations, attributes, isRelation, nil
+}
+
 func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, error) {
 	join := Join{}
-	for _, rel := range relations {
-		rel1, err := i.repository.GetCalculatedRelation(rel)
+	for _, rel1Name := range relations {
+		rel1Value, err := i.repository.GetCalculatedRelation(rel1Name)
 		if err != nil {
 			return nil, err
 		}
 
-		rel1Pair := entity.Pair[string, *entity.Relation]{Left: rel, Right: rel1}
+		rel1Pair := entity.Pair[string, *entity.Relation]{Left: rel1Name, Right: rel1Value}
 		relations = relations[1:]
-		for _, rel := range relations {
-			rel2, err := i.repository.GetCalculatedRelation(rel)
+		for _, rel2Name := range relations {
+			rel2Value, err := i.repository.GetCalculatedRelation(rel2Name)
 			if err != nil {
 				return nil, err
 			}
 
-			rel2Pair := entity.Pair[string, *entity.Relation]{Left: rel, Right: rel2}
+			rel2Pair := entity.Pair[string, *entity.Relation]{Left: rel2Name, Right: rel2Value}
 			relations = relations[1:]
 			commonAttributes := make([]string, 0)
 			for row1 := range *rel1Pair.Right {
@@ -328,6 +320,32 @@ func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, er
 		Message:   "Relation join error",
 		Position:  entity.Position{},
 	}
+}
+
+func (i *Interpreter) limitResultRows(result *entity.Relation, resultRowNum string) error {
+	resultSliced := make(entity.Relation)
+	if resultRowNum != model.NULL.String() {
+		rowNum, err := strconv.Atoi(resultRowNum)
+		if err != nil {
+			return err
+		}
+
+		if rowNum < len(*result) {
+			count := 0
+			for row := range *result {
+				if count >= rowNum {
+					break
+				}
+
+				resultSliced[row] = struct{}{}
+				count++
+			}
+
+			result = &resultSliced
+		}
+	}
+
+	return nil
 }
 
 func (i *Interpreter) evaluateComparison(expression *BinaryExpression) (bool, error) {
@@ -437,11 +455,12 @@ func (i *Interpreter) evaluateSort(expression *UnaryExpression, relation *entity
 		return nil, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["CE"],
 			Message:   "Such sort type is undefined",
+			Position:  expression.position,
 		}
 	}
 
 	attr := model.Attribute{}
-	complexAttribute, err := attr.ExtractAttribute(expression.expression.(*IdentifierExpression).value, entity.Position{})
+	complexAttribute, err := attr.ExtractAttribute(expression.expression.(*IdentifierExpression).value, expression.position)
 	if err != nil {
 		return nil, err
 	}
@@ -486,4 +505,34 @@ func (i *Interpreter) evaluateSort(expression *UnaryExpression, relation *entity
 	})
 
 	return relationSlice, nil
+}
+
+func (i *Interpreter) evaluateAssignment(expression *BinaryExpression) (bool, error) {
+	relationAttribute := expression.left.(*IdentifierExpression).value
+	assignedValue := expression.right.(*IdentifierExpression).value
+
+	attr := model.Attribute{}
+	complexAttribute, err := attr.ExtractAttribute(relationAttribute, expression.position)
+	if err != nil {
+		return false, err
+	}
+
+	relation, err := i.repository.GetRelation(complexAttribute.Relation)
+	if err != nil {
+		return false, err
+	}
+
+	for row := range *relation {
+		if _, exists := (*row)[complexAttribute.Attribute]; !exists {
+			return false, &entity.CustomError{
+				ErrorType: entity.ResponseTypes["CE"],
+				Message:   fmt.Sprintf("Attribute %s doesn't exist", complexAttribute.Attribute),
+				Position:  expression.position,
+			}
+		}
+
+		(*row)[complexAttribute.Attribute] = []string{assignedValue}
+	}
+
+	return true, nil
 }

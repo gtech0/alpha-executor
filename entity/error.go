@@ -11,5 +11,5 @@ type CustomError struct {
 }
 
 func (c *CustomError) Error() string {
-	return fmt.Sprintf("%s at %d:%d : %s", c.ErrorType, c.Position.Line, c.Position.Column, c.Message)
+	return fmt.Sprintf("%s: %s at %d line", c.ErrorType, c.Message, c.Position.Line)
 }

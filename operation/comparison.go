@@ -89,9 +89,11 @@ func (c *Comparison) twoAttributesCompare(attributeLeft, attributeRight model.Co
 	valuesRight := (*relation2)[attributeRight.Attribute]
 	for _, valLeft := range valuesLeft {
 		for _, valRight := range valuesRight {
+			var isTrue bool
+
 			c.parameters.left.value = valLeft
 			c.parameters.right.value = valRight
-			if isTrue, err := c.valueComparator(); isTrue && err == nil {
+			if isTrue, err = c.valueComparator(); isTrue && err == nil {
 				return true, nil
 			}
 

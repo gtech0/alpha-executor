@@ -64,6 +64,10 @@ func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
 	}
 }
 
+func (t *TestingRepository) GetAllRelations() entity.Relations {
+	return t.relations
+}
+
 func (t *TestingRepository) AddCalculatedRelation(name string, relation *entity.Relation) {
 	t.calculatedRelations[name] = relation
 }
@@ -105,5 +109,6 @@ func (t *TestingRepository) GetResult() (*entity.Relation, error) {
 func (t *TestingRepository) Clear() {
 	clear(t.rows)
 	clear(t.relations)
+	clear(t.calculatedRelations)
 	clear(t.result)
 }

@@ -54,6 +54,7 @@ func (r *Relation) EqualArity(r2 *Relation, position Position) error {
 				return &CustomError{
 					ErrorType: ResponseTypes["RT"],
 					Message:   fmt.Sprintf("Incorrect arity at %d:%d", position.Line, position.Column),
+					Position:  position,
 				}
 			}
 		}

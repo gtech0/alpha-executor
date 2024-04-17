@@ -51,7 +51,7 @@ func (p *Parser) parseExpression() Expression {
 	case model.GET, model.RANGE, model.HOLD, model.RELEASE, model.UPDATE, model.DELETE, model.PUT:
 		return p.parsePrimary()
 	default:
-		return p.parseImplication()
+		return p.parseAssigment()
 	}
 }
 
@@ -148,29 +148,28 @@ func (p *Parser) parsePrimary() Expression {
 		return &UnaryExpression{parsedType.String(), p.parseComparison(), position}
 	case model.LEFT_PARENTHESIS:
 		p.next()
-		value := p.parseExpression()
+		value := p.parseImplication()
 		p.expect(model.RIGHT_PARENTHESIS)
 		return value
 	case model.GET:
 		p.next()
 		variable := p.parsePrimary()
 		rows, relations := p.parseRowNumAndRelation()
-		expression := p.parseExpression()
-		sort := p.parseSort()
 		return &GetExpression{parsedType.String(), variable, rows, relations,
-			expression, sort, position}
+			p.parseImplication(), p.parseSort(), position}
 	case model.COMMA:
 		p.next()
 		return p.parsePrimary()
 	case model.RANGE:
 		p.next()
-		return &RangeExpression{parsedType.String(), p.parsePrimary(), p.parsePrimary(), position}
+		return &RangeExpression{parsedType.String(), p.parsePrimary(),
+			p.parsePrimary(), position}
 	case model.HOLD:
 		p.next()
 		variable := p.parsePrimary()
 		_, relations := p.parseRowNumAndRelation()
 		return &HoldExpression{parsedType.String(), variable, relations,
-			p.parseExpression(), position}
+			p.parseImplication(), position}
 	case model.RELEASE, model.UPDATE, model.DELETE:
 		p.next()
 		return &OperationExpression{parsedType.String(), p.parsePrimary(), position}
@@ -181,7 +180,7 @@ func (p *Parser) parsePrimary() Expression {
 		return &PutExpression{parsedType.String(), variable, relations, position}
 	case model.LOGIC_START:
 		p.next()
-		return p.parseExpression()
+		return p.parseImplication()
 	case model.DOWN, model.UP:
 		p.next()
 		return &UnaryExpression{parsedType.String(), p.parsePrimary(), position}
@@ -226,4 +225,10 @@ func (p *Parser) parseSort() Expression {
 	}
 
 	return p.parsePrimary()
+}
+
+func (p *Parser) parseAssigment() Expression {
+	expression := p.parseComparison()
+	expression.(*BinaryExpression).kind = model.ASSIGN.String()
+	return expression
 }

@@ -39,6 +39,8 @@ const (
 	DOWN
 	UP
 
+	ASSIGN
+
 	EQUALS
 	NOT_EQUALS
 	LESS_THAN
@@ -84,6 +86,8 @@ var tokens = []string{
 
 	DOWN: "DOWN",
 	UP:   "UP",
+
+	ASSIGN: "ASSIGN",
 
 	EQUALS:              "=",
 	NOT_EQUALS:          "≠",
