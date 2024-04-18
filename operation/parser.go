@@ -151,28 +151,18 @@ func (p *Parser) parsePrimary() Expression {
 		value := p.parseImplication()
 		p.expect(model.RIGHT_PARENTHESIS)
 		return value
-	case model.GET:
+	case model.GET, model.HOLD:
 		p.next()
 		variable := p.parsePrimary()
 		rows, relations := p.parseRowNumAndRelation()
-		return &GetExpression{parsedType.String(), variable, rows, relations,
+		return &GetHoldExpression{parsedType.String(), variable, rows, relations,
 			p.parseImplication(), p.parseSort(), position}
 	case model.COMMA:
 		p.next()
 		return p.parsePrimary()
 	case model.RANGE:
 		p.next()
-		return &RangeExpression{parsedType.String(), p.parsePrimary(),
-			p.parsePrimary(), position}
-	case model.HOLD:
-		p.next()
-		variable := p.parsePrimary()
-		_, relations := p.parseRowNumAndRelation()
-		return &HoldExpression{parsedType.String(), variable, relations,
-			p.parseImplication(), position}
-	case model.RELEASE, model.UPDATE, model.DELETE:
-		p.next()
-		return &OperationExpression{parsedType.String(), p.parsePrimary(), position}
+		return &RangeExpression{parsedType.String(), p.parsePrimary(), p.parsePrimary(), position}
 	case model.PUT:
 		p.next()
 		variable := p.parsePrimary()
@@ -181,7 +171,7 @@ func (p *Parser) parsePrimary() Expression {
 	case model.LOGIC_START:
 		p.next()
 		return p.parseImplication()
-	case model.DOWN, model.UP:
+	case model.DOWN, model.UP, model.RELEASE, model.UPDATE, model.DELETE:
 		p.next()
 		return &UnaryExpression{parsedType.String(), p.parsePrimary(), position}
 	default:

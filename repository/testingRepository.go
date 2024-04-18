@@ -9,6 +9,7 @@ type TestingRepository struct {
 	rows                entity.RowsMap
 	relations           entity.Relations
 	calculatedRelations entity.Relations
+	heldRelations       entity.Relations
 	result              entity.Relation
 }
 
@@ -16,12 +17,14 @@ func NewTestingRepository(
 	rows entity.RowsMap,
 	relations entity.Relations,
 	calculatedRelations entity.Relations,
+	heldRelations entity.Relations,
 	result entity.Relation,
 ) *TestingRepository {
 	return &TestingRepository{
 		rows:                rows,
 		relations:           relations,
 		calculatedRelations: calculatedRelations,
+		heldRelations:       heldRelations,
 		result:              result,
 	}
 }
@@ -88,6 +91,32 @@ func (t *TestingRepository) GetCalculatedRelation(name string) (*entity.Relation
 		ErrorType: entity.ResponseTypes["CE"],
 		Message:   fmt.Sprintf("relation %s is null", name),
 	}
+}
+
+func (t *TestingRepository) AddHeldRelation(name string, relation *entity.Relation) {
+	t.heldRelations[name] = relation
+}
+
+func (t *TestingRepository) AddHeldRelations(relations entity.Relations) {
+	for name, relation := range relations {
+		t.heldRelations[name] = relation
+	}
+}
+
+func (t *TestingRepository) GetHeldRelation(name string) (*entity.Relation, error) {
+	result := t.heldRelations[name]
+	if result != nil {
+		return result, nil
+	}
+
+	return nil, &entity.CustomError{
+		ErrorType: entity.ResponseTypes["CE"],
+		Message:   fmt.Sprintf("relation %s is null", name),
+	}
+}
+
+func (t *TestingRepository) ReleaseHeldRelation(name string) {
+	delete(t.heldRelations, name)
 }
 
 func (t *TestingRepository) AddResult(rel *entity.Relation) {

@@ -50,7 +50,7 @@ func (i *IdentifierExpression) GetKind() string {
 	return i.kind
 }
 
-type GetExpression struct {
+type GetHoldExpression struct {
 	kind       string
 	variable   Expression
 	rows       Expression
@@ -60,7 +60,7 @@ type GetExpression struct {
 	position   entity.Position
 }
 
-func (g *GetExpression) GetKind() string {
+func (g *GetHoldExpression) GetKind() string {
 	return g.kind
 }
 
@@ -73,28 +73,6 @@ type RangeExpression struct {
 
 func (r *RangeExpression) GetKind() string {
 	return r.kind
-}
-
-type HoldExpression struct {
-	kind       string
-	variable   Expression
-	relations  []Expression
-	expression Expression
-	position   entity.Position
-}
-
-func (h *HoldExpression) GetKind() string {
-	return h.kind
-}
-
-type OperationExpression struct {
-	kind     string
-	variable Expression
-	position entity.Position
-}
-
-func (s *OperationExpression) GetKind() string {
-	return s.kind
 }
 
 type PutExpression struct {

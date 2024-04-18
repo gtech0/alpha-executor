@@ -36,7 +36,12 @@ func (i *Interpreter) Evaluate(expression Expression) error {
 			Position:  entity.Position{},
 		}
 	}
-	pretty.Print(i.repository.GetAllRelations())
+
+	_, err := pretty.Print(i.repository.GetAllRelations())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -64,8 +69,8 @@ func (i *Interpreter) evaluateProgram(program *Program) error {
 
 func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 	switch expression.GetKind() {
-	case model.GET.String():
-		return i.evaluateGet(expression.(*GetExpression))
+	case model.GET.String(), model.HOLD.String():
+		return i.evaluateGet(expression.(*GetHoldExpression), expression.GetKind())
 	case model.EQUALS.String(),
 		model.NOT_EQUALS.String(),
 		model.LESS_THAN_EQUALS.String(),
@@ -87,6 +92,10 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 		return i.evaluateNegation(expression.(*UnaryExpression))
 	case model.ASSIGN.String():
 		return i.evaluateAssignment(expression.(*BinaryExpression))
+	case model.UPDATE.String():
+		return i.evaluateUpdate(expression.(*UnaryExpression))
+	case model.RELEASE.String():
+		return i.evaluateRelease(expression.(*UnaryExpression))
 	default:
 		return false, &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
@@ -148,7 +157,7 @@ func (i *Interpreter) evaluateFreeRelation(
 	return false, nil
 }
 
-func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
+func (i *Interpreter) evaluateGet(expression *GetHoldExpression, operation string) (bool, error) {
 	relation := expression.variable.(*IdentifierExpression)
 	if relation.kind != model.FREE_RELATION.String() {
 		return false, &entity.CustomError{
@@ -223,12 +232,25 @@ func (i *Interpreter) evaluateGet(expression *GetExpression) (bool, error) {
 		return false, err
 	}
 
-	i.repository.AddRelation(relation.value, result)
-	i.repository.AddResult(result)
+	switch operation {
+	case model.GET.String():
+		i.repository.AddRelation(relation.value, result)
+		//i.repository.AddResult(result)
+		break
+	case model.HOLD.String():
+		i.repository.AddHeldRelation(relation.value, result)
+	default:
+		return false, &entity.CustomError{
+			ErrorType: entity.ResponseTypes["RT"],
+			Message:   fmt.Sprintf("Unsupported operation %s", operation),
+			Position:  expression.position,
+		}
+	}
+
 	return true, nil
 }
 
-func (i *Interpreter) getData(expression *GetExpression, relation *IdentifierExpression) ([]string, []string, bool, error) {
+func (i *Interpreter) getData(expression *GetHoldExpression, relation *IdentifierExpression) ([]string, []string, bool, error) {
 	relations := make([]string, 0)
 	attributes := make([]string, 0)
 	isRelation := false
@@ -517,7 +539,7 @@ func (i *Interpreter) evaluateAssignment(expression *BinaryExpression) (bool, er
 		return false, err
 	}
 
-	relation, err := i.repository.GetRelation(complexAttribute.Relation)
+	relation, err := i.repository.GetHeldRelation(complexAttribute.Relation)
 	if err != nil {
 		return false, err
 	}
@@ -534,5 +556,26 @@ func (i *Interpreter) evaluateAssignment(expression *BinaryExpression) (bool, er
 		(*row)[complexAttribute.Attribute] = []string{assignedValue}
 	}
 
+	return true, nil
+}
+
+func (i *Interpreter) evaluateUpdate(expression *UnaryExpression) (bool, error) {
+	relationName := expression.expression.(*IdentifierExpression).value
+	relation, err := i.repository.GetHeldRelation(relationName)
+	if err != nil {
+		return false, err
+	}
+
+	i.repository.AddRelation(relationName, relation)
+	return true, nil
+}
+
+func (i *Interpreter) evaluateRelease(expression *UnaryExpression) (bool, error) {
+	relationName := expression.expression.(*IdentifierExpression).value
+	if _, err := i.repository.GetHeldRelation(relationName); err != nil {
+		return false, err
+	}
+
+	i.repository.ReleaseHeldRelation(relationName)
 	return true, nil
 }
