@@ -46,8 +46,6 @@ func (i *Interpreter) Evaluate(expression Expression) error {
 }
 
 func (i *Interpreter) evaluateProgram(program *Program) error {
-	//var last *entity.Relation
-
 	for _, expression := range program.body {
 		_, err := i.evaluateExpression(expression)
 		if err != nil {
@@ -63,7 +61,6 @@ func (i *Interpreter) evaluateProgram(program *Program) error {
 		}
 	}
 
-	//i.repository.AddResult(last)
 	return nil
 }
 
@@ -90,6 +87,8 @@ func (i *Interpreter) evaluateExpression(expression Expression) (bool, error) {
 		return i.evaluateForAll(expression.(*BinaryExpression))
 	case model.NEGATION.String():
 		return i.evaluateNegation(expression.(*UnaryExpression))
+	case model.IMPLICATION.String():
+		return i.evaluateImplication(expression.(*BinaryExpression))
 	case model.ASSIGN.String():
 		return i.evaluateAssignment(expression.(*BinaryExpression))
 	case model.UPDATE.String():
@@ -216,11 +215,11 @@ func (i *Interpreter) evaluateGet(expression *GetHoldExpression, operation strin
 			return false, err
 		}
 	} else {
-		return false, &entity.CustomError{
-			ErrorType: entity.ResponseTypes["RT"],
-			Message:   "Unable to calculate result relation or result is empty",
-			Position:  expression.position,
+		if err = i.addToRepository(expression, operation, relation.value, result); err != nil {
+			return false, err
 		}
+
+		return true, nil
 	}
 
 	if _, err = pretty.Print(sorted); err != nil {
@@ -232,22 +231,33 @@ func (i *Interpreter) evaluateGet(expression *GetHoldExpression, operation strin
 		return false, err
 	}
 
+	if err = i.addToRepository(expression, operation, relation.value, result); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (i *Interpreter) addToRepository(
+	expression *GetHoldExpression,
+	operation string,
+	relationName string,
+	result *entity.Relation,
+) error {
 	switch operation {
 	case model.GET.String():
-		i.repository.AddRelation(relation.value, result)
-		//i.repository.AddResult(result)
+		i.repository.AddRelation(relationName, result)
 		break
 	case model.HOLD.String():
-		i.repository.AddHeldRelation(relation.value, result)
+		i.repository.AddHeldRelation(relationName, result)
 	default:
-		return false, &entity.CustomError{
+		return &entity.CustomError{
 			ErrorType: entity.ResponseTypes["RT"],
 			Message:   fmt.Sprintf("Unsupported operation %s", operation),
 			Position:  expression.position,
 		}
 	}
-
-	return true, nil
+	return nil
 }
 
 func (i *Interpreter) getData(expression *GetHoldExpression, relation *IdentifierExpression) ([]string, []string, bool, error) {
@@ -475,6 +485,20 @@ func (i *Interpreter) evaluateNegation(expression *UnaryExpression) (bool, error
 	}
 
 	return !calculatedExpression, nil
+}
+
+func (i *Interpreter) evaluateImplication(expression *BinaryExpression) (bool, error) {
+	left, err := i.evaluateExpression(expression.left)
+	if err != nil {
+		return false, err
+	}
+
+	right, err := i.evaluateExpression(expression.right)
+	if err != nil {
+		return false, err
+	}
+
+	return !left || right, nil
 }
 
 func (i *Interpreter) evaluateSort(expression *UnaryExpression, relation *entity.Relation) ([]*entity.RowMap, error) {
