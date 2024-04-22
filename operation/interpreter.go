@@ -344,6 +344,15 @@ func (i *Interpreter) joiningRelations(relations []string) (*entity.Relation, er
 	}
 }
 
+func (i *Interpreter) mapToSlice(relation *entity.Relation) []*entity.RowMap {
+	relationSlice := make([]*entity.RowMap, 0, len(*relation))
+	for row := range *relation {
+		relationSlice = append(relationSlice, row)
+	}
+
+	return relationSlice
+}
+
 func (i *Interpreter) limitResultRows(result *entity.Relation, resultRowNum string) error {
 	resultSliced := make(entity.Relation)
 	if resultRowNum != model.NULL.String() {
@@ -497,11 +506,7 @@ func (i *Interpreter) evaluateSort(expression *UnaryExpression, relation *entity
 		}
 	}
 
-	relationSlice := make([]*entity.RowMap, 0, len(*relation))
-	for row := range *relation {
-		relationSlice = append(relationSlice, row)
-	}
-
+	relationSlice := i.mapToSlice(relation)
 	sort.Slice(relationSlice, func(i, j int) bool {
 		values1, values2 := (*relationSlice[i])[attribute], (*relationSlice[j])[attribute]
 		for _, value1 := range values1 {

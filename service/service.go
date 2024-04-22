@@ -42,12 +42,12 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 		return model.TestingSender{}, err
 	}
 
-	output, err := e.testingRepository.GetResult()
-	if err != nil {
-		return model.TestingSender{}, err
-	}
+	output := e.testingRepository.GetAllRelations()
+	//if err != nil {
+	//	return model.TestingSender{}, err
+	//}
 
 	return model.TestingSender{
-		Result: output,
+		Results: &output,
 	}, nil
 }
