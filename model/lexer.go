@@ -90,11 +90,11 @@ var tokens = []string{
 	ASSIGN: "ASSIGN",
 
 	EQUALS:              "=",
-	NOT_EQUALS:          "≠",
+	NOT_EQUALS:          "!=",
 	LESS_THAN:           "<",
-	LESS_THAN_EQUALS:    "≤",
+	LESS_THAN_EQUALS:    "<=",
 	GREATER_THAN:        ">",
-	GREATER_THAN_EQUALS: "≥",
+	GREATER_THAN_EQUALS: ">=",
 
 	EXISTS:  "∃", //какие-то кортежи удовлетворяют условию
 	FOR_ALL: "∀", //     все
@@ -157,21 +157,6 @@ func (l *Lexer) Lex() [][]*Token {
 		case '=':
 			result = append(result, &Token{EQUALS, EQUALS.String(), l.pos})
 			break
-		case '≠':
-			result = append(result, &Token{NOT_EQUALS, NOT_EQUALS.String(), l.pos})
-			break
-		case '<':
-			result = append(result, &Token{LESS_THAN, LESS_THAN.String(), l.pos})
-			break
-		case '≤':
-			result = append(result, &Token{LESS_THAN_EQUALS, LESS_THAN_EQUALS.String(), l.pos})
-			break
-		case '>':
-			result = append(result, &Token{GREATER_THAN, GREATER_THAN.String(), l.pos})
-			break
-		case '≥':
-			result = append(result, &Token{GREATER_THAN_EQUALS, GREATER_THAN_EQUALS.String(), l.pos})
-			break
 		case '∃':
 			result = append(result, &Token{EXISTS, EXISTS.String(), l.pos})
 			break
@@ -201,6 +186,30 @@ func (l *Lexer) Lex() [][]*Token {
 			break
 		case ':':
 			result = append(result, &Token{LOGIC_START, LOGIC_START.String(), l.pos})
+			break
+		case '!', '>', '<':
+			l.backup()
+			lit := l.lexSym()
+			switch lit {
+			case "!=":
+				result = append(result, &Token{NOT_EQUALS, lit, l.pos})
+				break
+			case ">":
+				result = append(result, &Token{GREATER_THAN, lit, l.pos})
+				break
+			case "<":
+				result = append(result, &Token{LESS_THAN, lit, l.pos})
+				break
+			case ">=":
+				result = append(result, &Token{GREATER_THAN_EQUALS, lit, l.pos})
+				break
+			case "<=":
+				result = append(result, &Token{LESS_THAN_EQUALS, lit, l.pos})
+				break
+			default:
+				result = append(result, &Token{ILLEGAL, string(r), l.pos})
+				break
+			}
 			break
 		default:
 			if unicode.IsSpace(r) {
@@ -359,5 +368,35 @@ func (l *Lexer) lexStr() (string, int, int) {
 			return lit, dot, dash
 		}
 	}
+}
 
+func (l *Lexer) lexSym() string {
+	lit := ""
+
+	r, _, err := l.reader.ReadRune()
+	if err != nil {
+		if err == io.EOF {
+			return lit
+		}
+	}
+
+	l.pos.Column++
+	if r == '!' || r == '>' || r == '<' {
+		lit = lit + string(r)
+		r, _, err = l.reader.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				return lit
+			}
+		}
+
+		if !unicode.IsSpace(r) {
+			lit = lit + string(r)
+		}
+
+		return lit
+	} else {
+		l.backup()
+		return lit
+	}
 }

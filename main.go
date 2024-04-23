@@ -27,7 +27,7 @@ func main() {
 		make(entity.Relations),
 		make(entity.Relations),
 		make(entity.Relations),
-		make(entity.Relation),
+		make(entity.Relations),
 	)
 	executorService := service.NewExecutorService(testingRepository)
 	requestController := controller.NewRequestController(executorService)

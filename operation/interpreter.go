@@ -37,11 +37,6 @@ func (i *Interpreter) Evaluate(expression Expression) error {
 		}
 	}
 
-	_, err := pretty.Print(i.repository.GetAllRelations())
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -179,9 +174,6 @@ func (i *Interpreter) evaluateGet(expression *GetHoldExpression, operation strin
 	}
 
 	i.repository.AddCalculatedRelations(resultRelations)
-	//if _, err = pretty.Print(resultRelations); err != nil {
-	//	return false, err
-	//}
 
 	sortExpression := expression.sort.(*UnaryExpression)
 	sorted := make([]*entity.RowMap, 0)
@@ -246,7 +238,7 @@ func (i *Interpreter) addToRepository(
 ) error {
 	switch operation {
 	case model.GET.String():
-		i.repository.AddRelation(relationName, result)
+		i.repository.AddGetRelation(relationName, result)
 		break
 	case model.HOLD.String():
 		i.repository.AddHeldRelation(relationName, result)

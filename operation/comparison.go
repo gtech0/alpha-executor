@@ -139,22 +139,25 @@ func (*Comparison) incorrectAttribute(row *entity.RowMap, attribute string) bool
 }
 
 func (c *Comparison) valueComparator() (bool, error) {
-	numeric, err := c.numericComparator()
-	if err != nil {
-		return false, err
+	if isANumber(c.parameters.left.value) && isANumber(c.parameters.right.value) {
+		numeric, err := c.numericComparator()
+		if err != nil {
+			return false, err
+		}
+		return numeric, nil
+	} else if isADate(c.parameters.left.value) && isADate(c.parameters.right.value) {
+		date, err := c.dateComparator()
+		if err != nil {
+			return false, err
+		}
+		return date, nil
+	} else {
+		str, err := c.stringComparator()
+		if err != nil {
+			return false, err
+		}
+		return str, nil
 	}
-
-	str, err := c.stringComparator()
-	if err != nil {
-		return false, err
-	}
-
-	date, err := c.dateComparator()
-	if err != nil {
-		return false, err
-	}
-
-	return numeric || str || date, nil
 }
 
 func (c *Comparison) numericComparator() (bool, error) {
@@ -171,36 +174,11 @@ func (c *Comparison) numericComparator() (bool, error) {
 	switch c.parameters.kind {
 	case "=":
 		return oldVal == newVal, nil
-	case "≠":
+	case "!=":
 		return oldVal != newVal, nil
-	case "≤":
+	case "<=":
 		return oldVal <= newVal, nil
-	case "≥":
-		return oldVal >= newVal, nil
-	case "<":
-		return oldVal < newVal, nil
-	case ">":
-		return oldVal > newVal, nil
-	default:
-		return false, &entity.CustomError{
-			ErrorType: entity.ResponseTypes["CE"],
-			Message:   fmt.Sprintf("Unknown operator %s", c.parameters.kind),
-			Position:  c.parameters.position,
-		}
-	}
-}
-
-func (c *Comparison) stringComparator() (bool, error) {
-	oldVal := c.parameters.left.value
-	newVal := c.parameters.right.value
-	switch c.parameters.kind {
-	case "=":
-		return oldVal == newVal, nil
-	case "≠":
-		return oldVal != newVal, nil
-	case "≤":
-		return oldVal <= newVal, nil
-	case "≥":
+	case ">=":
 		return oldVal >= newVal, nil
 	case "<":
 		return oldVal < newVal, nil
@@ -246,4 +224,43 @@ func (c *Comparison) dateComparator() (bool, error) {
 			Position:  c.parameters.position,
 		}
 	}
+}
+
+func (c *Comparison) stringComparator() (bool, error) {
+	oldVal := c.parameters.left.value
+	newVal := c.parameters.right.value
+	switch c.parameters.kind {
+	case "=":
+		return oldVal == newVal, nil
+	case "!=":
+		return oldVal != newVal, nil
+	case "<=":
+		return oldVal <= newVal, nil
+	case ">=":
+		return oldVal >= newVal, nil
+	case "<":
+		return oldVal < newVal, nil
+	case ">":
+		return oldVal > newVal, nil
+	default:
+		return false, &entity.CustomError{
+			ErrorType: entity.ResponseTypes["CE"],
+			Message:   fmt.Sprintf("Unknown operator %s", c.parameters.kind),
+			Position:  c.parameters.position,
+		}
+	}
+}
+
+func isANumber(value string) bool {
+	if _, err := strconv.ParseFloat(value, 10); err != nil {
+		return false
+	}
+	return true
+}
+
+func isADate(value string) bool {
+	if _, err := time.Parse(time.DateTime, value); err != nil {
+		return false
+	}
+	return true
 }

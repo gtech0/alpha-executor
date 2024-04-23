@@ -10,7 +10,7 @@ type TestingRepository struct {
 	relations           entity.Relations
 	calculatedRelations entity.Relations
 	heldRelations       entity.Relations
-	result              entity.Relation
+	getRelations        entity.Relations
 }
 
 func NewTestingRepository(
@@ -18,14 +18,14 @@ func NewTestingRepository(
 	relations entity.Relations,
 	calculatedRelations entity.Relations,
 	heldRelations entity.Relations,
-	result entity.Relation,
+	getRelations entity.Relations,
 ) *TestingRepository {
 	return &TestingRepository{
 		rows:                rows,
 		relations:           relations,
 		calculatedRelations: calculatedRelations,
 		heldRelations:       heldRelations,
-		result:              result,
+		getRelations:        getRelations,
 	}
 }
 
@@ -71,10 +71,6 @@ func (t *TestingRepository) GetAllRelations() entity.Relations {
 	return t.relations
 }
 
-func (t *TestingRepository) AddCalculatedRelation(name string, relation *entity.Relation) {
-	t.calculatedRelations[name] = relation
-}
-
 func (t *TestingRepository) AddCalculatedRelations(relations entity.Relations) {
 	for name, relation := range relations {
 		t.calculatedRelations[name] = relation
@@ -97,12 +93,6 @@ func (t *TestingRepository) AddHeldRelation(name string, relation *entity.Relati
 	t.heldRelations[name] = relation
 }
 
-func (t *TestingRepository) AddHeldRelations(relations entity.Relations) {
-	for name, relation := range relations {
-		t.heldRelations[name] = relation
-	}
-}
-
 func (t *TestingRepository) GetHeldRelation(name string) (*entity.Relation, error) {
 	result := t.heldRelations[name]
 	if result != nil {
@@ -115,29 +105,22 @@ func (t *TestingRepository) GetHeldRelation(name string) (*entity.Relation, erro
 	}
 }
 
+func (t *TestingRepository) AddGetRelation(name string, relation *entity.Relation) {
+	t.getRelations[name] = relation
+}
+
+func (t *TestingRepository) GetGetRelations() entity.Relations {
+	return t.getRelations
+}
+
 func (t *TestingRepository) ReleaseHeldRelation(name string) {
 	delete(t.heldRelations, name)
 }
 
-func (t *TestingRepository) AddResult(rel *entity.Relation) {
-	t.result = *rel
-}
-
-func (t *TestingRepository) GetResult() (*entity.Relation, error) {
-	result := t.result
-	if result != nil {
-		return &result, nil
-	}
-
-	return nil, &entity.CustomError{
-		ErrorType: entity.ResponseTypes["CE"],
-		Message:   "result is null",
-	}
-}
-
-func (t *TestingRepository) Clear() {
+func (t *TestingRepository) ClearAll() {
 	clear(t.rows)
 	clear(t.relations)
 	clear(t.calculatedRelations)
-	clear(t.result)
+	clear(t.heldRelations)
+	clear(t.getRelations)
 }

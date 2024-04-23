@@ -35,6 +35,7 @@ func (r *Router) Server() {
 	}))
 
 	router.Post("/interpreter/execute", r.requestController.TestingServer)
+	router.Post("/interpreter/validate", r.requestController.ValidationServer)
 
 	port := ":8080"
 	err := http.ListenAndServe(port, router)

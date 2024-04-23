@@ -27,7 +27,7 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 		return model.TestingSender{}, err
 	}
 
-	e.testingRepository.Clear()
+	e.testingRepository.ClearAll()
 	e.testingRepository.AddRelations(receiver.Relations)
 
 	reader := strings.NewReader(receiver.Query)
@@ -42,7 +42,7 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 		return model.TestingSender{}, err
 	}
 
-	output := e.testingRepository.GetAllRelations()
+	output := e.testingRepository.GetGetRelations()
 	//if err != nil {
 	//	return model.TestingSender{}, err
 	//}
