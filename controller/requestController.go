@@ -4,6 +4,7 @@ import (
 	"alpha-executor/service"
 	"encoding/json"
 	"net/http"
+	"os"
 )
 
 type RequestController struct {
@@ -31,6 +32,10 @@ func (rc *RequestController) TestingServer(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (rc *RequestController) TestingCli(data *os.File) error {
+	return rc.executor.TestingCli(data)
+}
+
 func (rc *RequestController) ValidationServer(w http.ResponseWriter, r *http.Request) {
 	if err := rc.executor.ValidationServer(r.Body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -41,4 +46,8 @@ func (rc *RequestController) ValidationServer(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (rc *RequestController) ValidationCli() error {
+	return rc.executor.ValidationCli()
 }

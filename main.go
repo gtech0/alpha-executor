@@ -27,5 +27,9 @@ func main() {
 	requestController := controller.NewRequestController(executorService)
 
 	requestRouter := router.NewRouter(requestController)
-	requestRouter.Server()
+	if isCli {
+		requestRouter.Cli()
+	} else {
+		requestRouter.Server()
+	}
 }

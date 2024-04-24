@@ -2,12 +2,14 @@ package router
 
 import (
 	"alpha-executor/controller"
+	"flag"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"log"
 	"net/http"
+	"os"
 )
 
 type Router struct {
@@ -45,30 +47,25 @@ func (r *Router) Server() {
 	}
 }
 
-//func (r *Router) Cli() {
-//	fmt.Println("cli app launched")
-//
-//	data, err := model.GetConfig()
-//	if err != nil {
-//		log.Fatal(err)
-//		return
-//	}
-//
-//	validation := flag.Lookup("validation").Value.String()
-//	if validation == "true" {
-//		err = r.requestController.ValidationCli(data)
-//	} else {
-//		var testData *os.File
-//		testData, err = os.Open("cli/resources/test.json")
-//		if err != nil {
-//			log.Fatal("incorrect config path")
-//		}
-//
-//		err = r.requestController.TestingCli(testData)
-//	}
-//
-//	if err != nil {
-//		log.Fatal(err)
-//		return
-//	}
-//}
+func (r *Router) Cli() {
+	fmt.Println("cli app launched")
+
+	var err error
+	validation := flag.Lookup("validation").Value.String()
+	if validation == "true" {
+		err = r.requestController.ValidationCli()
+	} else {
+		var testData *os.File
+		testData, err = os.Open("cli/resources/test.json")
+		if err != nil {
+			log.Fatal("incorrect config path")
+		}
+
+		err = r.requestController.TestingCli(testData)
+	}
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+}

@@ -236,6 +236,10 @@ func (i *Interpreter) addToRepository(
 	relationName string,
 	result *entity.Relation,
 ) error {
+	if result == nil {
+		return nil
+	}
+
 	switch operation {
 	case model.GET.String():
 		i.repository.AddGetRelation(relationName, result)

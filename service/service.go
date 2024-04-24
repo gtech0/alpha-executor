@@ -52,6 +52,40 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 	}, nil
 }
 
+func (e *ExecutorService) TestingCli(data *os.File) error {
+	var receiver model.TestingReceiver
+	err := json.NewDecoder(data).Decode(&receiver)
+	if err != nil {
+		return err
+	}
+
+	var buffer bytes.Buffer
+	if err = json.NewEncoder(&buffer).Encode(receiver); err != nil {
+		return &entity.CustomError{
+			ErrorType: entity.ResponseTypes["CF"],
+			Message:   "Unexpected error",
+		}
+	}
+
+	body := io.NopCloser(&buffer)
+	result, err := e.Execute(body)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.OpenFile("resources/solutions/output.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
+	if err != nil {
+		return err
+	}
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err = encoder.Encode(result); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (e *ExecutorService) ValidationCommon(validationReceiver model.ValidationReceiver, data *model.Config) error {
 	for testNum := 0; testNum < data.TestCount; testNum++ {
 		relationsFile, err := os.Open(fmt.Sprintf("%s/%d.in", data.Tests, testNum))
@@ -132,4 +166,27 @@ func (e *ExecutorService) ValidationServer(body io.ReadCloser) error {
 	}
 
 	return e.ValidationCommon(validationReceiver, data)
+}
+
+func (e *ExecutorService) ValidationCli() error {
+	data, err := model.GetConfig()
+	if err != nil {
+		return err
+	}
+
+	source, err := os.Open(data.Source)
+	if err != nil {
+		return err
+	}
+
+	var validationReceiver model.ValidationReceiver
+	if err := json.NewDecoder(source).Decode(&validationReceiver); err != nil {
+		return err
+	}
+
+	if err := e.ValidationCommon(validationReceiver, data); err != nil {
+		return err
+	}
+
+	return nil
 }
