@@ -102,7 +102,7 @@ var tokens = []string{
 	NEGATION:    "¬",
 	CONJUNCTION: "∧",
 	DISJUNCTION: "∨",
-	IMPLICATION: "→",
+	IMPLICATION: "->",
 
 	LEFT_PARENTHESIS:  "(",
 	RIGHT_PARENTHESIS: ")",
@@ -172,9 +172,6 @@ func (l *Lexer) Lex() [][]*Token {
 		case '∨':
 			result = append(result, &Token{DISJUNCTION, DISJUNCTION.String(), l.pos})
 			break
-		case '→':
-			result = append(result, &Token{IMPLICATION, IMPLICATION.String(), l.pos})
-			break
 		case '(':
 			result = append(result, &Token{LEFT_PARENTHESIS, LEFT_PARENTHESIS.String(), l.pos})
 			break
@@ -187,7 +184,7 @@ func (l *Lexer) Lex() [][]*Token {
 		case ':':
 			result = append(result, &Token{LOGIC_START, LOGIC_START.String(), l.pos})
 			break
-		case '!', '>', '<':
+		case '!', '>', '<', '-':
 			l.backup()
 			lit := l.lexSym()
 			switch lit {
@@ -205,6 +202,9 @@ func (l *Lexer) Lex() [][]*Token {
 				break
 			case "<=":
 				result = append(result, &Token{LESS_THAN_EQUALS, lit, l.pos})
+				break
+			case "->":
+				result = append(result, &Token{IMPLICATION, lit, l.pos})
 				break
 			default:
 				result = append(result, &Token{ILLEGAL, string(r), l.pos})
@@ -381,7 +381,7 @@ func (l *Lexer) lexSym() string {
 	}
 
 	l.pos.Column++
-	if r == '!' || r == '>' || r == '<' {
+	if r == '!' || r == '>' || r == '<' || r == '-' {
 		lit = lit + string(r)
 		r, _, err = l.reader.ReadRune()
 		if err != nil {

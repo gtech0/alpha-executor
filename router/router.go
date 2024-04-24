@@ -48,17 +48,23 @@ func (r *Router) Server() {
 //func (r *Router) Cli() {
 //	fmt.Println("cli app launched")
 //
-//	solution := flag.Lookup("solution").Value.String()
-//	data, err := os.Open(solution)
+//	data, err := model.GetConfig()
 //	if err != nil {
-//		log.Fatal("incorrect solution path")
+//		log.Fatal(err)
+//		return
 //	}
 //
 //	validation := flag.Lookup("validation").Value.String()
 //	if validation == "true" {
 //		err = r.requestController.ValidationCli(data)
 //	} else {
-//		err = r.requestController.TestingCli(data)
+//		var testData *os.File
+//		testData, err = os.Open("cli/resources/test.json")
+//		if err != nil {
+//			log.Fatal("incorrect config path")
+//		}
+//
+//		err = r.requestController.TestingCli(testData)
 //	}
 //
 //	if err != nil {

@@ -63,11 +63,27 @@ func (r *Relation) EqualArity(r2 *Relation, position Position) error {
 	return nil
 }
 
-func (r *Relation) RelationsEqual(r2 *Relation) bool {
+func (r *Relation) RelationEqual(r2 *Relation) bool {
 	for row1 := range *r {
 		equal := false
 		for row2 := range *r2 {
 			if row1.RowsEqual(row2) {
+				equal = true
+			}
+		}
+
+		if !equal {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Relations) RelationsEqual(r2 *Relations) bool {
+	for _, relation1 := range *r {
+		equal := false
+		for _, relation2 := range *r2 {
+			if relation1.RelationEqual(relation2) {
 				equal = true
 			}
 		}

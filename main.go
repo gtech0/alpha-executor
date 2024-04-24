@@ -6,21 +6,15 @@ import (
 	"alpha-executor/repository"
 	"alpha-executor/router"
 	"alpha-executor/service"
-	"log"
-	"os"
+	"flag"
 )
 
 func main() {
-	file, err := os.Open("resources/test.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer func() {
-		if err = file.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	var isCli bool
+	flag.BoolVar(&isCli, "cli", false, "launch a command line app")
+	flag.String("config-path", "", "config file location")
+	flag.Bool("validation", false, "executes validation if true, testing if false")
+	flag.Parse()
 
 	testingRepository := repository.NewTestingRepository(
 		make(entity.RowsMap),

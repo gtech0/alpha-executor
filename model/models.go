@@ -11,4 +11,8 @@ type (
 	TestingSender struct {
 		Results *entity.Relations `json:"results"`
 	}
+
+	ValidationReceiver struct {
+		Query string `json:"query"`
+	}
 )

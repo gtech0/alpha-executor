@@ -32,13 +32,12 @@ func (rc *RequestController) TestingServer(w http.ResponseWriter, r *http.Reques
 }
 
 func (rc *RequestController) ValidationServer(w http.ResponseWriter, r *http.Request) {
-	result, err := rc.executor.Execute(r.Body)
-	if err != nil {
+	if err := rc.executor.ValidationServer(r.Body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(result); err != nil {
+	if err := json.NewEncoder(w).Encode("OK"); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
