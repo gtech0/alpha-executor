@@ -16,17 +16,17 @@ func main() {
 	flag.Bool("validation", false, "executes validation if true, testing if false")
 	flag.Parse()
 
-	testingRepository := repository.NewTestingRepository(
+	alphaRepository := repository.NewAlphaRepository(
 		make(entity.RowsMap),
 		make(entity.Relations),
 		make(entity.Relations),
 		make(entity.Relations),
 		make(entity.Relations),
 	)
-	executorService := service.NewExecutorService(testingRepository)
-	requestController := controller.NewRequestController(executorService)
+	alphaService := service.NewAlphaService(alphaRepository)
+	alphaController := controller.NewAlphaController(alphaService)
 
-	requestRouter := router.NewRouter(requestController)
+	requestRouter := router.NewRouter(alphaController)
 	if isCli {
 		requestRouter.Cli()
 	} else {

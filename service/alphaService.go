@@ -15,24 +15,24 @@ import (
 	"strings"
 )
 
-type ExecutorService struct {
-	testingRepository *repository.TestingRepository
+type AlphaService struct {
+	alphaRepository *repository.AlphaRepository
 }
 
-func NewExecutorService(testingRepository *repository.TestingRepository) *ExecutorService {
-	return &ExecutorService{
-		testingRepository: testingRepository,
+func NewAlphaService(alphaRepository *repository.AlphaRepository) *AlphaService {
+	return &AlphaService{
+		alphaRepository: alphaRepository,
 	}
 }
 
-func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, error) {
+func (e *AlphaService) Execute(body io.ReadCloser) (model.TestingSender, error) {
 	var receiver model.TestingReceiver
 	if err := json.NewDecoder(body).Decode(&receiver); err != nil {
 		return model.TestingSender{}, err
 	}
 
-	e.testingRepository.ClearAll()
-	e.testingRepository.AddRelations(receiver.Relations)
+	e.alphaRepository.ClearAll()
+	e.alphaRepository.AddRelations(receiver.Relations)
 
 	reader := strings.NewReader(receiver.Query)
 	program := operation.GenerateAST(bufio.NewReader(reader))
@@ -40,19 +40,19 @@ func (e *ExecutorService) Execute(body io.ReadCloser) (model.TestingSender, erro
 		return model.TestingSender{}, err
 	}
 
-	interpreter := operation.NewInterpreter(e.testingRepository)
+	interpreter := operation.NewInterpreter(e.alphaRepository)
 	err := interpreter.Evaluate(&program)
 	if err != nil {
 		return model.TestingSender{}, err
 	}
 
-	output := e.testingRepository.GetGetRelations()
+	output := e.alphaRepository.GetGetRelations()
 	return model.TestingSender{
 		Results: &output,
 	}, nil
 }
 
-func (e *ExecutorService) TestingCli(data *os.File) error {
+func (e *AlphaService) TestingCli(data *os.File) error {
 	var receiver model.TestingReceiver
 	err := json.NewDecoder(data).Decode(&receiver)
 	if err != nil {
@@ -73,7 +73,7 @@ func (e *ExecutorService) TestingCli(data *os.File) error {
 		return err
 	}
 
-	file, err := os.OpenFile("resources/solutions/output.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
+	file, err := os.OpenFile("resources/alpha/output.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (e *ExecutorService) TestingCli(data *os.File) error {
 	return nil
 }
 
-func (e *ExecutorService) ValidationCommon(validationReceiver model.ValidationReceiver, data *model.Config) error {
+func (e *AlphaService) ValidationCommon(validationReceiver model.ValidationReceiver, data *model.Config) error {
 	for testNum := 0; testNum < data.TestCount; testNum++ {
 		relationsFile, err := os.Open(fmt.Sprintf("%s/%d.in", data.Tests, testNum))
 		if err != nil {
@@ -154,7 +154,7 @@ func (e *ExecutorService) ValidationCommon(validationReceiver model.ValidationRe
 	return nil
 }
 
-func (e *ExecutorService) ValidationServer(body io.ReadCloser) error {
+func (e *AlphaService) ValidationServer(body io.ReadCloser) error {
 	var validationReceiver model.ValidationReceiver
 	if err := json.NewDecoder(body).Decode(&validationReceiver); err != nil {
 		return err
@@ -168,7 +168,7 @@ func (e *ExecutorService) ValidationServer(body io.ReadCloser) error {
 	return e.ValidationCommon(validationReceiver, data)
 }
 
-func (e *ExecutorService) ValidationCli() error {
+func (e *AlphaService) ValidationCli() error {
 	data, err := model.GetConfig()
 	if err != nil {
 		return err

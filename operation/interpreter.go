@@ -13,10 +13,10 @@ import (
 )
 
 type Interpreter struct {
-	repository *repository.TestingRepository
+	repository *repository.AlphaRepository
 }
 
-func NewInterpreter(repository *repository.TestingRepository) *Interpreter {
+func NewInterpreter(repository *repository.AlphaRepository) *Interpreter {
 	return &Interpreter{
 		repository: repository,
 	}

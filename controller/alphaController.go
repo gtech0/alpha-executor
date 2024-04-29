@@ -7,19 +7,19 @@ import (
 	"os"
 )
 
-type RequestController struct {
-	executor *service.ExecutorService
+type AlphaController struct {
+	executor *service.AlphaService
 }
 
-func NewRequestController(
-	executor *service.ExecutorService,
-) *RequestController {
-	return &RequestController{
+func NewAlphaController(
+	executor *service.AlphaService,
+) *AlphaController {
+	return &AlphaController{
 		executor: executor,
 	}
 }
 
-func (rc *RequestController) TestingServer(w http.ResponseWriter, r *http.Request) {
+func (rc *AlphaController) TestingServer(w http.ResponseWriter, r *http.Request) {
 	result, err := rc.executor.Execute(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -32,11 +32,11 @@ func (rc *RequestController) TestingServer(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (rc *RequestController) TestingCli(data *os.File) error {
+func (rc *AlphaController) TestingCli(data *os.File) error {
 	return rc.executor.TestingCli(data)
 }
 
-func (rc *RequestController) ValidationServer(w http.ResponseWriter, r *http.Request) {
+func (rc *AlphaController) ValidationServer(w http.ResponseWriter, r *http.Request) {
 	if err := rc.executor.ValidationServer(r.Body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -48,6 +48,6 @@ func (rc *RequestController) ValidationServer(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (rc *RequestController) ValidationCli() error {
+func (rc *AlphaController) ValidationCli() error {
 	return rc.executor.ValidationCli()
 }

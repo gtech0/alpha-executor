@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-type TestingRepository struct {
+type AlphaRepository struct {
 	rows                entity.RowsMap
 	relations           entity.Relations
 	calculatedRelations entity.Relations
@@ -13,14 +13,14 @@ type TestingRepository struct {
 	getRelations        entity.Relations
 }
 
-func NewTestingRepository(
+func NewAlphaRepository(
 	rows entity.RowsMap,
 	relations entity.Relations,
 	calculatedRelations entity.Relations,
 	heldRelations entity.Relations,
 	getRelations entity.Relations,
-) *TestingRepository {
-	return &TestingRepository{
+) *AlphaRepository {
+	return &AlphaRepository{
 		rows:                rows,
 		relations:           relations,
 		calculatedRelations: calculatedRelations,
@@ -29,11 +29,11 @@ func NewTestingRepository(
 	}
 }
 
-func (t *TestingRepository) AddRow(name string, row *entity.RowMap) {
+func (t *AlphaRepository) AddRow(name string, row *entity.RowMap) {
 	t.rows[name] = row
 }
 
-func (t *TestingRepository) GetRow(name string) (*entity.RowMap, error) {
+func (t *AlphaRepository) GetRow(name string) (*entity.RowMap, error) {
 	result := t.rows[name]
 	if result != nil {
 		return result, nil
@@ -45,17 +45,17 @@ func (t *TestingRepository) GetRow(name string) (*entity.RowMap, error) {
 	}
 }
 
-func (t *TestingRepository) AddRelation(name string, relation *entity.Relation) {
+func (t *AlphaRepository) AddRelation(name string, relation *entity.Relation) {
 	t.relations[name] = relation
 }
 
-func (t *TestingRepository) AddRelations(relations entity.Relations) {
+func (t *AlphaRepository) AddRelations(relations entity.Relations) {
 	for name, relation := range relations {
 		t.relations[name] = relation
 	}
 }
 
-func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
+func (t *AlphaRepository) GetRelation(name string) (*entity.Relation, error) {
 	result := t.relations[name]
 	if result != nil {
 		return result, nil
@@ -67,17 +67,17 @@ func (t *TestingRepository) GetRelation(name string) (*entity.Relation, error) {
 	}
 }
 
-func (t *TestingRepository) GetAllRelations() entity.Relations {
+func (t *AlphaRepository) GetAllRelations() entity.Relations {
 	return t.relations
 }
 
-func (t *TestingRepository) AddCalculatedRelations(relations entity.Relations) {
+func (t *AlphaRepository) AddCalculatedRelations(relations entity.Relations) {
 	for name, relation := range relations {
 		t.calculatedRelations[name] = relation
 	}
 }
 
-func (t *TestingRepository) GetCalculatedRelation(name string) (*entity.Relation, error) {
+func (t *AlphaRepository) GetCalculatedRelation(name string) (*entity.Relation, error) {
 	result := t.calculatedRelations[name]
 	if result != nil {
 		return result, nil
@@ -89,11 +89,11 @@ func (t *TestingRepository) GetCalculatedRelation(name string) (*entity.Relation
 	}
 }
 
-func (t *TestingRepository) AddHeldRelation(name string, relation *entity.Relation) {
+func (t *AlphaRepository) AddHeldRelation(name string, relation *entity.Relation) {
 	t.heldRelations[name] = relation
 }
 
-func (t *TestingRepository) GetHeldRelation(name string) (*entity.Relation, error) {
+func (t *AlphaRepository) GetHeldRelation(name string) (*entity.Relation, error) {
 	result := t.heldRelations[name]
 	if result != nil {
 		return result, nil
@@ -105,19 +105,19 @@ func (t *TestingRepository) GetHeldRelation(name string) (*entity.Relation, erro
 	}
 }
 
-func (t *TestingRepository) AddGetRelation(name string, relation *entity.Relation) {
+func (t *AlphaRepository) AddGetRelation(name string, relation *entity.Relation) {
 	t.getRelations[name] = relation
 }
 
-func (t *TestingRepository) GetGetRelations() entity.Relations {
+func (t *AlphaRepository) GetGetRelations() entity.Relations {
 	return t.getRelations
 }
 
-func (t *TestingRepository) ReleaseHeldRelation(name string) {
+func (t *AlphaRepository) ReleaseHeldRelation(name string) {
 	delete(t.heldRelations, name)
 }
 
-func (t *TestingRepository) ClearAll() {
+func (t *AlphaRepository) ClearAll() {
 	clear(t.rows)
 	clear(t.relations)
 	clear(t.calculatedRelations)

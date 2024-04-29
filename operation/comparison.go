@@ -10,7 +10,7 @@ import (
 )
 
 type Comparison struct {
-	repository *repository.TestingRepository
+	repository *repository.AlphaRepository
 	parameters *parameters
 }
 
@@ -21,7 +21,7 @@ type parameters struct {
 	position entity.Position
 }
 
-func NewComparison(repository *repository.TestingRepository) *Comparison {
+func NewComparison(repository *repository.AlphaRepository) *Comparison {
 	return &Comparison{repository: repository}
 }
 

@@ -13,12 +13,12 @@ import (
 )
 
 type Router struct {
-	requestController *controller.RequestController
+	alphaController *controller.AlphaController
 }
 
-func NewRouter(requestController *controller.RequestController) *Router {
+func NewRouter(alphaController *controller.AlphaController) *Router {
 	return &Router{
-		requestController: requestController,
+		alphaController: alphaController,
 	}
 }
 
@@ -36,8 +36,8 @@ func (r *Router) Server() {
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 	}))
 
-	router.Post("/interpreter/execute", r.requestController.TestingServer)
-	router.Post("/interpreter/validate", r.requestController.ValidationServer)
+	router.Post("/alpha/execute", r.alphaController.TestingServer)
+	router.Post("/alpha/validate", r.alphaController.ValidationServer)
 
 	port := ":8080"
 	err := http.ListenAndServe(port, router)
@@ -53,15 +53,15 @@ func (r *Router) Cli() {
 	var err error
 	validation := flag.Lookup("validation").Value.String()
 	if validation == "true" {
-		err = r.requestController.ValidationCli()
+		err = r.alphaController.ValidationCli()
 	} else {
 		var testData *os.File
-		testData, err = os.Open("cli/resources/test.json")
+		testData, err = os.Open("resources/alpha/test.json")
 		if err != nil {
 			log.Fatal("incorrect config path")
 		}
 
-		err = r.requestController.TestingCli(testData)
+		err = r.alphaController.TestingCli(testData)
 	}
 
 	if err != nil {
